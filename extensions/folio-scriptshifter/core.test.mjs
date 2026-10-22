@@ -39,11 +39,8 @@ test('language metadata cache avoids repeated requests, expires, and stores no f
  await loadLanguages(cache,request,86400200);assert.equal(calls,2);
 });
 
-test('capitalization is applied to one complete field and disabled for reverse conversion',()=>{
+test('only first-word capitalization is requested for the complete romanized field',()=>{
  const text='كتاب جديد : مقدمة / اسم المؤلف';
- assert.deepEqual(transliterationRequest('arabic',text,'s2r','first'), {lang:'arabic',text,t_dir:'s2r',capitalize:'first',options:{}});
- assert.equal(transliterationRequest('arabic',text,'s2r','all').capitalize,'all');
- assert.equal(transliterationRequest('arabic',text,'s2r','none').capitalize,false);
- assert.equal(transliterationRequest('arabic','Kitāb jadīd','r2s','all').capitalize,false);
- assert.throws(()=>transliterationRequest('arabic',text,'s2r','title-case'),/supported capitalization/);
+ assert.deepEqual(transliterationRequest('arabic',text,'s2r'), {lang:'arabic',text,t_dir:'s2r',capitalize:'first',options:{}});
+ assert.equal(transliterationRequest('arabic','Kitāb jadīd','r2s').capitalize,false);
 });

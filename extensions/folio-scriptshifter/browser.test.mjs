@@ -64,8 +64,8 @@ try {
   const trans=route.request().url().endsWith('/trans');
   const payload=trans?route.request().postDataJSON():null;
   if(payload?.t_dir==='r2s')assert.equal(payload.capitalize,false);
-  if(payload?.text==='كتاب جديد')assert.equal(payload.capitalize,'all');
-  const body=trans ? {output:payload.t_dir==='s2r'?(payload.text==='كتاب جديد'?'Kitāb Jadīd':'Kitāb'):'كتاب',warnings:[]} : {arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:true}};
+  if(payload?.text==='كتاب جديد')assert.equal(payload.capitalize,'first');
+  const body=trans ? {output:payload.t_dir==='s2r'?(payload.text==='كتاب جديد'?'Kitāb jadīd':'Kitāb'):'كتاب',warnings:[]} : {arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:true}};
   await route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(body)});
  });
  await record.evaluate(()=>{
@@ -89,17 +89,16 @@ try {
  assert.equal(await record.locator('[name$=".alternativeTitle"]').count(),1);
  await record.locator('#title').fill('kitāb');
  await popup.getByText('Transliterate current field',{exact:true}).click();
- await popup.getByLabel('Title: romanization capitalization',{exact:true}).isDisabled().then(value=>assert.equal(value,true));
+ assert.equal(await popup.getByLabel('Title: romanization capitalization',{exact:true}).count(),0);
  await popup.locator('article').first().getByText('Convert and add parallel field',{exact:true}).click();
  await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[1].alternativeTitle"]')?.value==='كتاب');
  assert.equal(await record.locator('#title').inputValue(),'kitāb');
  await record.locator('#title').fill('كتاب جديد');
  await popup.getByText('Transliterate current field',{exact:true}).click();
- await popup.getByLabel('Title: romanization capitalization',{exact:true}).selectOption('all');
  await popup.getByText('Convert and add parallel field',{exact:true}).click();
- await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[2].alternativeTitle"]')?.value==='Kitāb Jadīd');
+ await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[2].alternativeTitle"]')?.value==='Kitāb jadīd');
  assert.equal(await record.locator('#title').inputValue(),'كتاب جديد');
- console.log('PASS: whole-field capitalization choice reaches API and its complete response is inserted.');
+ console.log('PASS: first-word-only capitalization reaches API and its complete response is inserted.');
  console.log('PASS: popup converts and adds native parallel title in both directions without replacing the original (mock API).');
  // Restore fixture to one title/notes form for focused-field checks below.
  await record.locator('fieldset').evaluate(el=>el.remove());

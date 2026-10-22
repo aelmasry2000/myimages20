@@ -70,10 +70,9 @@ export async function loadLanguages(cache = globalThis.chrome?.storage?.local, r
   return tables;
 }
 
-export function transliterationRequest(lang, text, direction, capitalization = 'first') {
-  if (!['first','all','none'].includes(capitalization)) throw new Error('Choose a supported capitalization rule.');
+export function transliterationRequest(lang, text, direction) {
   if (!['s2r','r2s'].includes(direction)) throw new Error('Choose a supported conversion direction.');
   return {lang, text, t_dir:direction,
-    capitalize:direction==='s2r' && capitalization!=='none' ? capitalization : false,
+    capitalize:direction==='s2r' ? 'first' : false,
     options:{}};
 }
