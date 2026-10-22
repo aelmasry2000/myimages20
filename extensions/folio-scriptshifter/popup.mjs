@@ -1,5 +1,5 @@
 import {renderDiacritics} from './picker.mjs';
-import {apiRequest, detectDirection, suggestLanguage, assertSupported, loadLanguages, transliterationRequest} from './core.mjs';
+import {apiRequest, detectDirection, suggestLanguage, assertSupported, loadLanguages, transliterationRequest, normalizeRomanization} from './core.mjs';
 import {inspectForm, applyField, addParallelField} from './form.mjs';
 const status = document.querySelector('#status');
 const load = document.querySelector('#load');
@@ -54,14 +54,15 @@ function render(entry, tables, tabId, form) {
     try {
       assertSupported(tables, lang.value, direction.value);
       const data = await apiRequest('trans', transliterationRequest(lang.value, before, direction.value, entry.name));
-      output.value = data.output; apply.disabled = data.output === before;
-      if (parallel && data.output !== before) {
+      const converted = normalizeRomanization(data.output, direction.value, entry.name);
+      output.value = converted; apply.disabled = converted === before;
+      if (parallel && converted !== before) {
         message.textContent = 'Adding the converted entry in FOLIO…';
-        const result = await execute(tabId, addParallelField, [entry.key, before, data.output, form.url]);
+        const result = await execute(tabId, addParallelField, [entry.key, before, converted, form.url]);
         message.textContent = [result.duplicate ? 'That parallel value is already present.' : 'Added a parallel entry. The original is unchanged.', result.needsType ? 'Choose an Alternative title type in FOLIO before saving.' : 'Review the new entry and save in FOLIO.', ...(data.warnings || [])].join('\n');
         return;
       }
-      message.textContent = [data.output === before ? 'Output is unchanged.' : 'Review the output, then apply.', ...(data.warnings || [])].join('\n');
+      message.textContent = [converted === before ? 'Output is unchanged.' : 'Review the output, then apply.', ...(data.warnings || [])].join('\n');
     } catch (error) {message.textContent = error.message;}
     finally {preview.disabled = false; lang.disabled = false; direction.disabled = false;}
   });

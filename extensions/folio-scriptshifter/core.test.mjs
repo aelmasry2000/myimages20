@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {detectDirection, suggestLanguage, assertSupported, apiRequest, API, loadLanguages, transliterationRequest} from './core.mjs';
+import {detectDirection, suggestLanguage, assertSupported, apiRequest, API, loadLanguages, transliterationRequest, normalizeRomanization} from './core.mjs';
 const tables = {arabic: {label:'Arabic', marc_code:'ara', has_s2r:true, has_r2s:false}, korean:{label:'Korean',marc_code:'kor',has_s2r:true,has_r2s:true}};
 test('direction distinguishes script, romanization, mixed and nonletter text', () => {
  assert.equal(detectDirection('كتاب'), 's2r'); assert.equal(detectDirection('kitāb'), 'r2s');
@@ -53,4 +53,15 @@ test('names use every-word capitalization while titles, places and notes use fir
  for(const field of ['title','indexTitle','notes[0].note','publication[0].place','publication[0].role','contributors[0].contributorTypeText']) {
   assert.equal(transliterationRequest('arabic','كتاب جديد','s2r',field).capitalize,'first');
  }
+});
+
+test('title case correction lowercases interior capitals and uppercases only the first cased letter',()=>{
+ assert.equal(normalizeRomanization('al-Kitāb wa-al-Maktabah','s2r','title'),'Al-kitāb wa-al-maktabah');
+ assert.equal(normalizeRomanization('“al-Kitāb” : AL-MAKTABAH / ʿALĪ','s2r','title'),'“Al-kitāb” : al-maktabah / ʿalī');
+ assert.equal(normalizeRomanization('123 — ʿALĪ wa-KITĀB','s2r','notes[0].note'),'123 — ʿAlī wa-kitāb');
+});
+test('name fields capitalize each word and reverse conversion is unchanged',()=>{
+ assert.equal(normalizeRomanization('aḤMAD ʿaLĪ','s2r','contributors[0].name'),'Aḥmad ʿAlī');
+ assert.equal(normalizeRomanization('dĀR al-KUTUB','s2r','publication[0].publisher'),'Dār Al-kutub');
+ assert.equal(normalizeRomanization('الكتاب المكتبة','r2s','title'),'الكتاب المكتبة');
 });

@@ -77,3 +77,13 @@ export function transliterationRequest(lang, text, direction, fieldName = '') {
     capitalize:direction==='s2r' ? (nameField ? 'all' : 'first') : false,
     options:{}};
 }
+
+// ScriptShifter tables may introduce interior capitals even with capitalize:first.
+// Enforce the library's requested display case after the complete field returns.
+export function normalizeRomanization(text, direction, fieldName = '') {
+  if(direction !== 's2r') return text;
+  const lower=text.toLowerCase();
+  const capitalize=value=>value.replace(/\p{Cased_Letter}/u, letter=>letter.toUpperCase());
+  const nameField=/^(contributors\[\d+\]\.name|publication\[\d+\]\.publisher)$/.test(fieldName);
+  return nameField ? lower.replace(/\S+/gu, capitalize) : capitalize(lower);
+}

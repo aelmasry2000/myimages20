@@ -66,8 +66,8 @@ try {
   if(payload?.t_dir==='r2s')assert.equal(payload.capitalize,false);
   if(payload?.text==='كتاب جديد')assert.equal(payload.capitalize,'first');
   if(['أحمد علي','جامعة القاهرة','دار الكتب'].includes(payload?.text))assert.equal(payload.capitalize,'all');
-  const names={'أحمد علي':'Aḥmad ʿAlī','جامعة القاهرة':'Jāmiʿat Al-Qāhirah','دار الكتب':'Dār Al-Kutub'};
-  const body=trans ? {output:payload.t_dir==='s2r'?(names[payload.text] || (payload.text==='كتاب جديد'?'Kitāb jadīd':'Kitāb')):'كتاب',warnings:[]} : {arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:true}};
+  const names={'أحمد علي':'Aḥmad ʿAlī','جامعة القاهرة':'Jāmiʿat Al-qāhirah','دار الكتب':'Dār Al-kutub'};
+  const body=trans ? {output:payload.t_dir==='s2r'?(names[payload.text] || (payload.text==='كتاب جديد'?'kiTāb JaDĪD':'Kitāb')):'كتاب',warnings:[]} : {arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:true}};
   await route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(body)});
  });
  await record.evaluate(()=>{
@@ -102,6 +102,21 @@ try {
  assert.equal(await record.locator('#title').inputValue(),'كتاب جديد');
  console.log('PASS: first-word-only capitalization reaches API and its complete response is inserted.');
  console.log('PASS: popup converts and adds native parallel title in both directions without replacing the original (mock API).');
+ await popup.unroute('https://bibframe.org/scriptshifter/**');
+ await popup.route('https://bibframe.org/scriptshifter/**',async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'content-type'}});return;}
+  const trans=route.request().url().endsWith('/trans');
+  const payload=trans?route.request().postDataJSON():null;
+  const names={'أحمد علي':'aḤMAD ʿaLĪ','جامعة القاهرة':'jĀmiʿat AL-QĀHIRAH','دار الكتب':'dĀR al-KUTUB'};
+  if(payload && names[payload.text])assert.equal(payload.capitalize,'all');
+  await route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(trans?{output:names[payload.text] || 'al-Kitāb wa-al-Maktabah',warnings:[]}:{arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:true}})});
+ });
+ await record.locator('#title').fill('الكتاب والمكتبة');
+ await popup.getByText('Transliterate current field',{exact:true}).click();
+ await popup.getByText('Convert and add parallel field',{exact:true}).click();
+ await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[3].alternativeTitle"]')?.value==='Al-kitāb wa-al-maktabah');
+ assert.equal(await popup.getByLabel('Title: preview',{exact:true}).inputValue(),'Al-kitāb wa-al-maktabah');
+ console.log('PASS: interior capitals from the API are corrected in both preview and saved-form parallel title.');
  // Exercise both personal/corporate name types and publication name roles.
  await record.evaluate(()=>{
   for(const root of ['contributors','publication']) {
@@ -121,7 +136,7 @@ try {
   await record.locator('[name="contributors[0].name"]').focus();
   await popup.getByText('Transliterate current field',{exact:true}).click();
   await popup.getByText('Convert and add parallel field',{exact:true}).click();
-  const expected=type==='person'?'Aḥmad ʿAlī':'Jāmiʿat Al-Qāhirah';
+  const expected=type==='person'?'Aḥmad ʿAlī':'Jāmiʿat Al-qāhirah';
   await record.waitForFunction(value=>[...document.querySelectorAll('#test-contributors textarea')].some(el=>el.value===value),expected);
  }
  for(const role of ['Publication','Manufacture','Production']) {
@@ -132,7 +147,7 @@ try {
   await record.locator('#test-publication li').evaluateAll(rows=>rows.slice(1).forEach(row=>row.remove()));
   await popup.getByText('Transliterate current field',{exact:true}).click();
   await popup.getByText('Convert and add parallel field',{exact:true}).click();
-  await record.waitForFunction(()=>document.querySelector('[name="publication[1].publisher"]')?.value==='Dār Al-Kutub');
+  await record.waitForFunction(()=>document.querySelector('[name="publication[1].publisher"]')?.value==='Dār Al-kutub');
   assert.equal(await record.locator('[name="publication[1].role"]').inputValue(),role);
  }
  console.log('PASS: personal/corporate contributors and publisher/printer/producer name roles request every-word capitalization and retain row metadata.');
