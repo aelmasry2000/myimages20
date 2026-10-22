@@ -39,6 +39,7 @@ try {
  assert.ok(await popup.getByLabel('Title: Unicode mark',{exact:true}).locator('option').count()<=200);
  await popup.getByLabel('Title: search marks',{exact:true}).fill('HEBREW POINT SHEVA');
  assert.ok(await popup.getByLabel('Title: Unicode mark',{exact:true}).locator('option').count()>0);
+ await record.locator('#title').evaluate(el=>el.blur());
  await popup.getByText('Transliterate current field',{exact:true}).click();
  await popup.waitForFunction(()=>document.querySelectorAll('article').length===1);
  assert.equal(await popup.getByLabel('Title: language',{exact:true}).inputValue(),'arabic');
@@ -184,6 +185,10 @@ try {
  assert.equal(await popup.getByLabel('Notes: diacritics draft',{exact:true}).inputValue(),'é');
  await record.waitForFunction(()=>document.querySelector('#notes').value==='é');
  assert.equal(offlineRequests,0);
+ await popup.getByText('Transliterate current field',{exact:true}).click();
+ await popup.getByText(/Transliteration could not load/).waitFor();
+ assert.equal(await popup.locator('article').count(),1);
+ assert.equal(await popup.getByLabel('Notes: diacritics draft',{exact:true}).count(),1);
  assert.equal(await record.locator('#inventory-search').inputValue(),'query');
  assert.equal(await record.locator('#held-by').inputValue(),'library');
  await record.locator('#inventory-search').focus();

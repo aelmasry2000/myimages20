@@ -12,4 +12,4 @@ The previous combined `alma-scriptshifter` prototype is replaced by the two Alma
 
 Separate Alma ZIPs are in [`downloads`](../downloads/). Extract a ZIP and load its extracted extension folder. Alma versions remain prototypes: live Alma compatibility and saved-record behavior are unverified, and native parallel MARC 880 fields/BIBFRAME properties must be created in Alma manually. The FOLIO extension is separate.
 
-Rebuild both Alma archives using `python3 scripts/package-alma-extensions.py` from the repository root.
+Rebuild all extension archives using `python3 scripts/package-extensions.py` from the repository root.

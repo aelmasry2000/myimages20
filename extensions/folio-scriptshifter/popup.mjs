@@ -5,23 +5,33 @@ const status = document.querySelector('#status');
 const load = document.querySelector('#load');
 const diacritics = document.querySelector('#diacritics');
 const fields = document.querySelector('#fields');
+let languageLoad = null;
+let fieldView = 0;
 function element(tag, text) {const el = document.createElement(tag); if (text) el.textContent = text; return el;}
 async function execute(tabId, func, args = []) {
   const result = await chrome.scripting.executeScript({target: {tabId}, func, args});
-  if (!result[0] || result[0].error) throw new Error(result[0]?.error?.message || 'Could not access this form.');
+  if (!result[0] || result[0].error || result[0].result === undefined) throw new Error(result[0]?.error?.message || 'FOLIO could not read this field. Refresh the FOLIO page, click an editable field, and try again.');
   return result[0].result;
 }
 load.addEventListener('click', async () => {
-  load.disabled = true; diacritics.disabled = true; fields.replaceChildren(); status.textContent = 'Loading ScriptShifter languages…';
+  if(languageLoad)return;
+  const view=++fieldView;
+  load.disabled=true; status.textContent='Loading ScriptShifter languages… You can continue using diacritics.';
+  // Capture the field first, while it is still the user's chosen source.
   try {
-    const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
-    if (!tab?.id || !/^https?:/.test(tab.url || '')) throw new Error('Open the FOLIO form in a normal browser tab.');
-    const [tables, form] = await Promise.all([loadLanguages(), execute(tab.id, inspectForm, [false, true])]);
-    for (const entry of form.entries) render(entry, tables, tab.id, form);
-    status.textContent = `Transliterating: ${form.entries[0].label}`;
-  } catch (error) {status.textContent = error.message;}
-  finally {load.disabled = false; diacritics.disabled = false;}
+    const [tab]=await chrome.tabs.query({active:true,currentWindow:true});
+    if(!tab?.id || !/^https?:/.test(tab.url || ''))throw new Error('Open the FOLIO form in a normal browser tab.');
+    const form=await execute(tab.id,inspectForm,[false,true]);
+    const pending=loadLanguages();languageLoad=pending;
+    const tables=await pending;
+    if(view!==fieldView)return;
+    fields.replaceChildren();
+    for(const entry of form.entries)render(entry,tables,tab.id,form);
+    status.textContent=`Transliterating: ${form.entries[0].label}`;
+  } catch(error){if(view!==fieldView)return;status.textContent=`Transliteration could not load: ${error.message} Diacritics remains available.`;}
+  finally{languageLoad=null;load.disabled=false;}
 });
+
 function render(entry, tables, tabId, form) {
   const card = element('article');
   card.append(element('strong', entry.label), element('p', entry.text));
@@ -87,6 +97,7 @@ function render(entry, tables, tabId, form) {
 }
 
 async function loadCurrentField() {
+  ++fieldView;
   load.disabled = true; diacritics.disabled = true; fields.replaceChildren(); status.textContent = 'Loading diacritics…';
   try {
     const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
@@ -101,7 +112,7 @@ async function loadCurrentField() {
       (before, after) => execute(tab.id, applyField, [entry.key, before, after, form.url])));
     status.textContent = `Editing: ${form.entries[0].label}`;
   } catch (error) {status.textContent = error.message;}
-  finally {load.disabled = false; diacritics.disabled = false;}
+  finally {load.disabled = Boolean(languageLoad); diacritics.disabled = false;}
 }
 diacritics.addEventListener('click', loadCurrentField);
 loadCurrentField();

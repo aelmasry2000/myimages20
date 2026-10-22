@@ -60,7 +60,7 @@ export function renderDiacritics(entry, marks, applyToField) {
     pending = true; update();
     try {
       await applyToField(fieldValue, next); fieldValue = next;
-      message.textContent = 'Inserted into the FOLIO field. Verify the value before saving. Undo is available while this popup stays open.';
+      message.textContent = 'Inserted into the FOLIO field. Verify the value before saving. Undo is available while this panel stays open.';
       return true;
     } catch (error) {message.textContent = error.message; return false;}
     finally {pending = false; update();}

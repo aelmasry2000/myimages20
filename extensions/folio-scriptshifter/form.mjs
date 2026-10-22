@@ -1,5 +1,19 @@
 // Executed in the active tab only after the extension button is clicked.
 export function inspectForm(includeEmpty = false, focusedOnly = false) {
+  // Keep the page's last field/cursor when browser extension UI takes focus.
+  const state = globalThis.folioScriptShifterSelection ||= {installed:false,last:null};
+  const remember = () => {
+    const field=document.activeElement;
+    if (field && ['INPUT','TEXTAREA'].includes(field.tagName) &&
+        (field.tagName==='TEXTAREA' || ['text',''].includes(field.type))) {
+      state.last={field,start:field.selectionStart,end:field.selectionEnd,url:location.href};
+    }
+  };
+  if(!state.installed){
+    for(const event of ['focusin','selectionchange','pointerup','keyup'])document.addEventListener(event,remember,true);
+    state.installed=true;
+  }
+  remember();
   const visible = el => !!el.getClientRects().length && !el.disabled && !el.readOnly &&
     !el.closest('[hidden], [aria-hidden="true"]');
   const labelText = node => {
@@ -25,15 +39,16 @@ export function inspectForm(includeEmpty = false, focusedOnly = false) {
   let inputs = [...scope.querySelectorAll('input, textarea')].filter(el =>
     (el.tagName === 'TEXTAREA' || ['text', ''].includes(el.type)) && visible(el) && recordText(el) && (includeEmpty || el.value.trim()));
   if (focusedOnly) {
-    const active = document.activeElement;
+    let active = document.activeElement;
+    if ((!active || ['BODY','HTML'].includes(active.tagName)) && state.last?.url===location.href && state.last.field.isConnected)active=state.last.field;
     if (!inputs.includes(active)) throw new Error('Click inside the FOLIO text field you want to edit, then open this extension.');
     inputs = [active];
   }
   const token = crypto.randomUUID();
   const entries = inputs.map((el, index) => {
-    const key = `${token}-${index}`;
+    const key = el.getAttribute('data-folio-scriptshifter') || `${token}-${index}`;
     el.setAttribute('data-folio-scriptshifter', key);
-    return {key, label: label(el), name: el.name, resourceTitle: el.name === 'title' || el.id === 'input_instance_title', text: el.value, selectionStart: el.selectionStart, selectionEnd: el.selectionEnd};
+    return {key, label: label(el), name: el.name, resourceTitle: el.name === 'title' || el.id === 'input_instance_title', text: el.value, selectionStart: state.last?.field===el ? state.last.start : el.selectionStart, selectionEnd: state.last?.field===el ? state.last.end : el.selectionEnd};
   });
   // Use a single unambiguous record-language control; do not infer from UI locale.
   const langs = [...scope.querySelectorAll('input, select')].filter(el => visible(el) &&
