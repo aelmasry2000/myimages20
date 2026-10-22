@@ -69,3 +69,11 @@ export async function loadLanguages(cache = globalThis.chrome?.storage?.local, r
   if(cache) {try{await cache.set({[key]:{savedAt:now,tables}});}catch{}}
   return tables;
 }
+
+export function transliterationRequest(lang, text, direction, capitalization = 'first') {
+  if (!['first','all','none'].includes(capitalization)) throw new Error('Choose a supported capitalization rule.');
+  if (!['s2r','r2s'].includes(direction)) throw new Error('Choose a supported conversion direction.');
+  return {lang, text, t_dir:direction,
+    capitalize:direction==='s2r' && capitalization!=='none' ? capitalization : false,
+    options:{}};
+}

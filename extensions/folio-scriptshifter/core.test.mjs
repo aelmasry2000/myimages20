@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {detectDirection, suggestLanguage, assertSupported, apiRequest, API, loadLanguages} from './core.mjs';
+import {detectDirection, suggestLanguage, assertSupported, apiRequest, API, loadLanguages, transliterationRequest} from './core.mjs';
 const tables = {arabic: {label:'Arabic', marc_code:'ara', has_s2r:true, has_r2s:false}, korean:{label:'Korean',marc_code:'kor',has_s2r:true,has_r2s:true}};
 test('direction distinguishes script, romanization, mixed and nonletter text', () => {
  assert.equal(detectDirection('كتاب'), 's2r'); assert.equal(detectDirection('kitāb'), 'r2s');
@@ -17,7 +17,7 @@ test('unsupported reverse conversions are rejected', () => {
  assert.doesNotThrow(() => assertSupported(tables, 'arabic', 's2r'));
 });
 test('API sends required payload to documented endpoint without cookies', async () => {
- const payload = {lang:'arabic',text:'كتاب',t_dir:'s2r',capitalize:'no_change',options:{}};
+ const payload = {lang:'arabic',text:'كتاب',t_dir:'s2r',capitalize:'first',options:{}};
  const result = await apiRequest('trans', payload, async (url, options) => {
   assert.equal(url, API+'trans'); assert.equal(options.credentials, 'omit');
   assert.deepEqual(JSON.parse(options.body), payload);
@@ -37,4 +37,13 @@ test('language metadata cache avoids repeated requests, expires, and stores no f
  assert.deepEqual(await loadLanguages(cache,request,200),tables);assert.equal(calls,1);
  assert.deepEqual(Object.keys(stored.scriptshifterLanguagesV1),['savedAt','tables']);
  await loadLanguages(cache,request,86400200);assert.equal(calls,2);
+});
+
+test('capitalization is applied to one complete field and disabled for reverse conversion',()=>{
+ const text='كتاب جديد : مقدمة / اسم المؤلف';
+ assert.deepEqual(transliterationRequest('arabic',text,'s2r','first'), {lang:'arabic',text,t_dir:'s2r',capitalize:'first',options:{}});
+ assert.equal(transliterationRequest('arabic',text,'s2r','all').capitalize,'all');
+ assert.equal(transliterationRequest('arabic',text,'s2r','none').capitalize,false);
+ assert.equal(transliterationRequest('arabic','Kitāb jadīd','r2s','all').capitalize,false);
+ assert.throws(()=>transliterationRequest('arabic',text,'s2r','title-case'),/supported capitalization/);
 });

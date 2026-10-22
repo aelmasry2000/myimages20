@@ -25,8 +25,8 @@ try {
  await popup.route('https://bibframe.org/scriptshifter/**', async route => {
   if (route.request().method() === 'OPTIONS') {await route.fulfill({status:204,headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'content-type'}});return;}
   const trans = route.request().url().endsWith('/trans');
-  if (trans) {requests++;assert.equal(route.request().postDataJSON().text,'كتاب');}
-  await route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(trans?{output:'kitāb',warnings:[]}:{arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:false}})});
+  if (trans) {requests++;assert.equal(route.request().postDataJSON().text,'كتاب');assert.equal(route.request().postDataJSON().capitalize,'first');}
+  await route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(trans?{output:'Kitāb',warnings:[]}:{arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:false}})});
  });
  await popup.exposeFunction('executeInRecord', async (source,args) => [{result:await record.evaluate(({source,args}) => (0,eval)(`(${source})`)(...args),{source,args})}]);
  await popup.addInitScript(({url}) => {window.chrome={tabs:{query:async()=>[{id:1,url}]},scripting:{executeScript:({func,args=[]})=>window.executeInRecord(func.toString(),args)}};},{url:base+'/record'});
@@ -45,10 +45,10 @@ try {
  assert.equal(await popup.getByLabel('Title: direction',{exact:true}).inputValue(),'s2r');
  await popup.getByText('Preview this field',{exact:true}).click();
  await popup.waitForFunction(()=>!document.querySelectorAll('article button')[1].disabled);
- assert.equal(await popup.getByLabel('Title: preview',{exact:true}).inputValue(),'kitāb');
+ assert.equal(await popup.getByLabel('Title: preview',{exact:true}).inputValue(),'Kitāb');
  await popup.getByText('Apply to field',{exact:true}).click();
- await record.waitForFunction(()=>document.querySelector('#title').value==='kitāb');
- assert.deepEqual(await record.evaluate(()=>window.events),['kitāb']);
+ await record.waitForFunction(()=>document.querySelector('#title').value==='Kitāb');
+ assert.deepEqual(await record.evaluate(()=>window.events),['Kitāb']);
  await popup.getByText('Undo',{exact:true}).click();
  await record.waitForFunction(()=>document.querySelector('#title').value==='كتاب');
  await popup.getByText('Preview this field',{exact:true}).click();
@@ -62,7 +62,10 @@ try {
  await popup.route('https://bibframe.org/scriptshifter/**', async route=>{
   if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'content-type'}});return;}
   const trans=route.request().url().endsWith('/trans');
-  const body=trans ? {output:route.request().postDataJSON().t_dir==='s2r'?'kitāb':'كتاب',warnings:[]} : {arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:true}};
+  const payload=trans?route.request().postDataJSON():null;
+  if(payload?.t_dir==='r2s')assert.equal(payload.capitalize,false);
+  if(payload?.text==='كتاب جديد')assert.equal(payload.capitalize,'all');
+  const body=trans ? {output:payload.t_dir==='s2r'?(payload.text==='كتاب جديد'?'Kitāb Jadīd':'Kitāb'):'كتاب',warnings:[]} : {arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:true}};
   await route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(body)});
  });
  await record.evaluate(()=>{
@@ -78,7 +81,7 @@ try {
  });
  await popup.getByText('Transliterate current field',{exact:true}).click();
  await popup.getByText('Convert and add parallel field',{exact:true}).click();
- await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[0].alternativeTitle"]')?.value==='kitāb');
+ await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[0].alternativeTitle"]')?.value==='Kitāb');
  assert.equal(await record.locator('#title').inputValue(),'كتاب');
  await popup.getByText(/Choose an Alternative title type in FOLIO before saving/).waitFor();
  await popup.getByText('Convert and add parallel field',{exact:true}).click();
@@ -86,9 +89,17 @@ try {
  assert.equal(await record.locator('[name$=".alternativeTitle"]').count(),1);
  await record.locator('#title').fill('kitāb');
  await popup.getByText('Transliterate current field',{exact:true}).click();
+ await popup.getByLabel('Title: romanization capitalization',{exact:true}).isDisabled().then(value=>assert.equal(value,true));
  await popup.locator('article').first().getByText('Convert and add parallel field',{exact:true}).click();
  await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[1].alternativeTitle"]')?.value==='كتاب');
  assert.equal(await record.locator('#title').inputValue(),'kitāb');
+ await record.locator('#title').fill('كتاب جديد');
+ await popup.getByText('Transliterate current field',{exact:true}).click();
+ await popup.getByLabel('Title: romanization capitalization',{exact:true}).selectOption('all');
+ await popup.getByText('Convert and add parallel field',{exact:true}).click();
+ await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[2].alternativeTitle"]')?.value==='Kitāb Jadīd');
+ assert.equal(await record.locator('#title').inputValue(),'كتاب جديد');
+ console.log('PASS: whole-field capitalization choice reaches API and its complete response is inserted.');
  console.log('PASS: popup converts and adds native parallel title in both directions without replacing the original (mock API).');
  // Restore fixture to one title/notes form for focused-field checks below.
  await record.locator('fieldset').evaluate(el=>el.remove());

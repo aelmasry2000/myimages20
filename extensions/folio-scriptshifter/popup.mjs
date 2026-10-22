@@ -1,5 +1,5 @@
 import {renderDiacritics} from './picker.mjs';
-import {apiRequest, detectDirection, suggestLanguage, assertSupported, loadLanguages} from './core.mjs';
+import {apiRequest, detectDirection, suggestLanguage, assertSupported, loadLanguages, transliterationRequest} from './core.mjs';
 import {inspectForm, applyField, addParallelField} from './form.mjs';
 const status = document.querySelector('#status');
 const load = document.querySelector('#load');
@@ -37,6 +37,10 @@ function render(entry, tables, tabId, form) {
   direction.append(new Option('Choose direction…', ''), new Option('Original script → Romanization', 's2r'), new Option('Romanization → Original script', 'r2s'));
   direction.value = detectDirection(entry.text);
   const dirLabel = element('label', 'Direction'); dirLabel.append(direction); card.append(dirLabel);
+  const capitalization = element('select'); capitalization.setAttribute('aria-label', `${entry.label}: romanization capitalization`);
+  capitalization.append(new Option('Capitalize first word of the whole field','first'), new Option('Capitalize every word in the whole field','all'), new Option('Leave capitalization unchanged','none'));
+  capitalization.value = 'first'; capitalization.disabled = direction.value !== 's2r';
+  const capLabel = element('label','Romanization capitalization'); capLabel.append(capitalization); card.append(capLabel);
   const parallel = entry.resourceTitle || /^(contributors\[\d+\]\.name|notes\[\d+\]\.note|series\[\d+\]\.value|alternativeTitles\[\d+\]\.alternativeTitle|publication\[\d+\]\.(publisher|place)|(editions|physicalDescriptions|publicationFrequency|publicationRange)\[\d+\])$/.test(entry.name || '');
   const preview = element('button', parallel ? 'Convert and add parallel field' : 'Preview this field');
   const apply = element('button', 'Apply to field'); apply.disabled = true;
@@ -46,13 +50,15 @@ function render(entry, tables, tabId, form) {
   if (parallel) {apply.hidden = true; undo.hidden = true;}
   let before = entry.text, applied = '';
   function invalidate() {output.value = ''; apply.disabled = true;}
-  lang.addEventListener('change', invalidate); direction.addEventListener('change', invalidate);
+  lang.addEventListener('change', invalidate);
+  capitalization.addEventListener('change', invalidate);
+  direction.addEventListener('change', () => {capitalization.disabled = direction.value !== 's2r'; invalidate();});
   preview.addEventListener('click', async () => {
-    invalidate(); preview.disabled = true; lang.disabled = true; direction.disabled = true;
+    invalidate(); preview.disabled = true; lang.disabled = true; direction.disabled = true; capitalization.disabled = true;
     message.textContent = 'Waiting for ScriptShifter conversion…';
     try {
       assertSupported(tables, lang.value, direction.value);
-      const data = await apiRequest('trans', {lang: lang.value, text: before, t_dir: direction.value, capitalize: 'no_change', options: {}});
+      const data = await apiRequest('trans', transliterationRequest(lang.value, before, direction.value, capitalization.value));
       output.value = data.output; apply.disabled = data.output === before;
       if (parallel && data.output !== before) {
         message.textContent = 'Adding the converted entry in FOLIO…';
@@ -62,14 +68,14 @@ function render(entry, tables, tabId, form) {
       }
       message.textContent = [data.output === before ? 'Output is unchanged.' : 'Review the output, then apply.', ...(data.warnings || [])].join('\n');
     } catch (error) {message.textContent = error.message;}
-    finally {preview.disabled = false; lang.disabled = false; direction.disabled = false;}
+    finally {preview.disabled = false; lang.disabled = false; direction.disabled = false; capitalization.disabled = direction.value !== 's2r';}
   });
   apply.addEventListener('click', async () => {
     apply.disabled = true;
     try {
       await execute(tabId, applyField, [entry.key, before, output.value, form.url]);
       applied = output.value; undo.disabled = false; preview.disabled = true;
-      lang.disabled = true; direction.disabled = true;
+      lang.disabled = true; direction.disabled = true; capitalization.disabled = true;
       message.textContent = 'Applied to the form. Verify the value in FOLIO before saving. Undo is available while this popup stays open.';
     } catch (error) {message.textContent = error.message;}
   });
@@ -77,7 +83,7 @@ function render(entry, tables, tabId, form) {
     undo.disabled = true;
     try {
       await execute(tabId, applyField, [entry.key, applied, before, form.url]);
-      invalidate(); preview.disabled = false; lang.disabled = false; direction.disabled = false;
+      invalidate(); preview.disabled = false; lang.disabled = false; direction.disabled = false; capitalization.disabled = direction.value !== 's2r';
       message.textContent = 'Original text restored.';
     } catch (error) {message.textContent = error.message;}
   });
