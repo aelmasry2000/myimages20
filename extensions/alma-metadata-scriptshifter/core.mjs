@@ -1,7 +1,8 @@
 export const API = 'https://bibframe.org/scriptshifter/';
 
 export function detectDirection(text) {
-  const letters = [...text].filter(c => /\p{Letter}/u.test(c));
+  // These modifier letters represent romanization punctuation (ayn/hamza/primes), not a second script.
+  const letters = [...text].filter(c => /\p{Letter}/u.test(c) && !/[ʹʺʻʼʽʾʿˀˁ]/u.test(c));
   if (!letters.length) return '';
   const latin = letters.filter(c => /\p{Script=Latin}/u.test(c)).length;
   if (latin === letters.length) return 'r2s';

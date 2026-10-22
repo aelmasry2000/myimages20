@@ -73,3 +73,8 @@ test('Arabic titles keep initial al- lowercase and capitalize the following stem
  assert.equal(normalizeRomanization('KITĀB wa-al-MAKTABAH','s2r','title','arabic'),'Kitāb wa-al-maktabah');
  assert.equal(normalizeRomanization('al-KITĀB','s2r','publication[0].publisher','arabic'),'Al-kitāb');
 });
+
+test('ayn/hamza transliteration modifiers do not turn romanization into mixed script',()=>{
+ for(const value of ['ʿAlī','Aḥmad ʿAlī','Qurʼān','al-Kitāb'])assert.equal(detectDirection(value),'r2s');
+ assert.equal(detectDirection('علي ʿAlī'),'');
+});

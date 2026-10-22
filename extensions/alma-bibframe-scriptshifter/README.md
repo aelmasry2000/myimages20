@@ -1,4 +1,4 @@
-# ScriptShifter for Alma BIBFRAME Editor — 0.3.0 prototype
+# ScriptShifter for Alma BIBFRAME Editor — 0.3.1 prototype
 
 Copyright © 2026 Ayman El-Masry.
 
@@ -37,3 +37,5 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node browser.test.mjs
 ```
 
 The browser fixture exercises standard text controls and the extension bridge with mocked Chrome APIs and ScriptShifter. It is not a live Alma compatibility test. No third-party extension implementation code is copied; the historical MARC textarea wrapper convention was checked against the publicly available Alma Booster project.
+
+Direction detection treats romanization modifiers such as ʿ/ʾ as punctuation, so names such as `Aḥmad ʿAlī` are recognized as romanized text. Genuine mixtures of Latin and non-Latin script still require a direction choice.

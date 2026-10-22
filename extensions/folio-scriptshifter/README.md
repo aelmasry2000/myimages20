@@ -92,10 +92,12 @@ Chrome may omit a tab's URL from `tabs.query`. The extension now accepts a valid
 
 After updating, reload the extension, refresh the FOLIO page, select its browser tab and click the ScriptShifter toolbar icon. Opening the panel from Chrome's generic side-panel selector alone does not necessarily grant access. If access is missing, the tool now gives that specific instruction rather than claiming FOLIO is not in a normal browser tab.
 
-## Reviewed corrections (0.9.0)
+## Reviewed corrections (0.9.1)
 
 Conversion no longer automatically inserts a machine result into a parallel field. Review or edit the output first, then use **Add reviewed parallel field** (or **Apply to field** for nonrepeatable fields). Machine transliteration can be ambiguous; this workflow is not a guarantee of correct spelling for all names or languages.
 
 **Remember reviewed correction** stores the exact source and reviewed output in this browser for the selected language/direction, reusable in any field. For example, correct `Ayman → أيما` to `Ayman → أيمن`, then save. Select **Also remember the reverse mapping** only if you also want `أيمن → Ayman`. A conflicting inverse mapping is rejected without changing either saved entry. Matching uses Unicode NFC and trims outside whitespace; it is not a substring dictionary and does not guess variants or merge different source names. Saved reviewed values override automatic casing.
 
 **Forget saved correction** removes the current source/direction entry; inverse entries are separate and can be removed when that direction/source is selected. Saved corrections contain bibliographic text, stay local to this extension/browser profile, and are not shared with other installations or sent to a new lookup service. No name/authority service has been integrated; a saved correction represents your review, not independent verification. Saved exact matches can work without another conversion API request, but the language list must be available. No universal accuracy claim is made.
+
+Direction detection treats romanization modifiers such as ʿ/ʾ as punctuation, so names such as `Aḥmad ʿAlī` are recognized as romanized text. Genuine mixtures of Latin and non-Latin script still require a direction choice.
