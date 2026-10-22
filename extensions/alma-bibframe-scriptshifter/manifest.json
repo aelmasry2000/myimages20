@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "ScriptShifter for Alma",
-  "version": "0.1.0",
-  "description": "Alma companion for ScriptShifter conversion and offline Unicode diacritics in focused text fields.",
+  "name": "ScriptShifter for Alma BIBFRAME Editor",
+  "version": "0.2.0",
+  "description": "ScriptShifter for Alma BIBFRAME Editor: ScriptShifter conversion and offline diacritics in focused text fields.",
   "author": "Ayman El-Masry",
   "permissions": [
     "activeTab",
@@ -21,7 +21,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Open ScriptShifter for Alma"
+    "default_title": "Open ScriptShifter for Alma BIBFRAME Editor"
   },
   "side_panel": {
     "default_path": "panel.html"

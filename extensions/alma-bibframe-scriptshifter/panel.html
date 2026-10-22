@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>ScriptShifter for Alma BIBFRAME Editor</title>
+<style>body{font:14px system-ui;margin:16px;color:#172b4d}h1{font-size:20px}label{display:block;margin:10px 0}select,button,input{padding:7px;max-width:100%;margin:4px 0}textarea{width:96%;min-height:80px;font:inherit}article{border-top:1px solid #bac4ce;padding-top:10px;margin-top:14px}small{display:block;line-height:1.4}#status{white-space:pre-wrap}</style></head><body>
+<h1>ScriptShifter for Alma BIBFRAME Editor</h1>
+<p>Click a text field in Alma, then capture it here. This panel stays open while you switch fields.</p>
+<button id="enable">Enable on this Alma site</button>
+<button id="capture">Capture current field</button>
+<p id="status" role="status" aria-live="polite"></p>
+<section id="conversion" hidden>
+<strong id="fieldName"></strong><textarea id="source" readonly aria-label="Original field"></textarea>
+<label>Language<select id="language" aria-label="Language"><option value="">Load languages first</option></select></label><button id="languages">Load languages</button>
+<label>Direction<select id="direction"><option value="s2r">Original script → Romanization</option><option value="r2s">Romanization → Original script</option></select></label>
+<label>Field kind<select id="kind"><option value="text">Title / other text — first word capitalized</option><option value="name">Personal / corporate / publisher / printer / producer name — every word capitalized</option></select></label>
+<button id="convert">Convert</button>
+<label>Converted field<textarea id="output" readonly></textarea></label>
+<button id="insert" disabled>Insert conversion into current field</button>
+<small>For a parallel value, first create the parallel BIBFRAME property using Alma, click its empty text control, then insert here. Create the property and set its language/script using Alma’s native tools. Conversion sends text to bibframe.org; Alma credentials are never sent.</small>
+</section>
+<section id="diacritics"></section>
+<footer><small>Copyright © 2026 Ayman El-Masry</small></footer>
+<script type="module" src="panel.mjs"></script></body></html>

@@ -1,3 +1,4 @@
+import {EDITOR_MODE} from './mode.mjs';
 import {inspectActiveField,writeField} from './adapter.mjs';
 import {apiRequest,loadLanguages,detectDirection,suggestLanguage,transliterationRequest,normalizeRomanization,assertSupported} from './core.mjs';
 import {renderDiacritics} from './picker.mjs';
@@ -5,7 +6,7 @@ import {convertMarc,marcParts,nameTag} from './marc.mjs';
 const el=id=>document.getElementById(id);
 let source=null,tables={},busy=false;
 function invalidate(){el('output').value='';el('insert').disabled=true;}
-function setBusy(value){busy=value;for(const id of ['capture','convert','languages','enable'])el(id).disabled=value;for(const id of ['mode','kind','language','direction'])el(id).disabled=value;el('insert').disabled=value || !el('output').value;}
+function setBusy(value){busy=value;for(const id of ['capture','convert','languages','enable'])el(id).disabled=value;for(const id of ['kind','language','direction'])el(id).disabled=value;el('insert').disabled=value || !el('output').value;}
 async function currentTab(){
  const [tab]=await chrome.tabs.query({active:true,currentWindow:true});
  if(!tab?.id || !tab.url?.startsWith('https://'))throw new Error('Open your Alma site in an HTTPS tab.');
@@ -44,7 +45,7 @@ el('capture').addEventListener('click',async()=>{
   const catalog=await fetch(new URL('./marks.json',import.meta.url)).then(response=>response.json());
   source={...field};invalidate();el('conversion').hidden=false;el('source').value=field.text;
   el('fieldName').textContent=field.tag?`${field.label} (MARC ${field.tag})`:field.label;
-  const text=el('mode').value==='marc'?marcParts(field.text).filter(part=>!part.literal && !/^[0-9]$/.test(part.code)).map(part=>part.text).join(' '):field.text;
+  const text=EDITOR_MODE==='marc'?marcParts(field.text).filter(part=>!part.literal && !/^[0-9]$/.test(part.code)).map(part=>part.text).join(' '):field.text;
   const direction=detectDirection(text);el('direction').value=direction || 's2r';
   el('kind').value=nameTag(field.tag)?'name':'text';
   if(Object.keys(tables).length)el('language').value=suggestLanguage(text,tables).id;
@@ -66,7 +67,7 @@ el('languages').addEventListener('click',async()=>{
  }catch(error){el('status').textContent=error.message;}
  finally{setBusy(false);}
 });
-for(const id of ['mode','kind','language','direction'])el(id).addEventListener('change',invalidate);
+for(const id of ['kind','language','direction'])el(id).addEventListener('change',invalidate);
 el('convert').addEventListener('click',async()=>{
  if(!source)return;setBusy(true);invalidate();el('status').textContent='Waiting for ScriptShifter…';
  try{
@@ -81,7 +82,7 @@ el('convert').addEventListener('click',async()=>{
    return normalizeRomanization(data.output,direction,cap==='all'?'contributors[0].name':(!source.tag || /^(130|240|242|243|245|246|247|730|740)$/.test(source.tag))?'title':'text',lang);
   };
   let output;
-  if(el('mode').value==='marc')output=await convertMarc(source.text,source.tag,direction,request,kind);
+  if(EDITOR_MODE==='marc')output=await convertMarc(source.text,source.tag,direction,request,kind);
   else{
    const fieldName=kind==='name'?'contributors[0].name':'title';
    output=await request(source.text,transliterationRequest(lang,source.text,direction,fieldName).capitalize);

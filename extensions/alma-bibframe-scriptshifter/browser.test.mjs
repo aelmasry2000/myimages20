@@ -1,9 +1,10 @@
+import {EDITOR_MODE} from './mode.mjs';
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root=new URL('./',import.meta.url);
-const files=new Set(['panel.html','panel.mjs','adapter.mjs','core.mjs','marc.mjs','picker.mjs','diacritics.mjs','marks.json']);
+const files=new Set(['panel.html','panel.mjs','mode.mjs','adapter.mjs','core.mjs','marc.mjs','picker.mjs','diacritics.mjs','marks.json']);
 const server=createServer(async(req,res)=>{
  try{
   const name=req.url.slice(1);
@@ -19,6 +20,7 @@ try{
  browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium',headless:true,args:['--no-sandbox']});
  const context=await browser.newContext(),record=await context.newPage(),panel=await context.newPage();panel.setDefaultTimeout(5000);record.setDefaultTimeout(5000);
  await record.goto(base+'/record');
+ if(EDITOR_MODE==='bibframe')await record.locator('#marc').fill('الكتاب');
  await panel.exposeFunction('runInRecord',async(source,args)=>[{frameId:0,result:await record.evaluate(({source,args})=>(0,eval)(`(${source})`)(...args),{source,args})}]);
  await panel.addInitScript(({url})=>{
   window.chrome={tabs:{query:async()=>[{id:1,url:'https://example.alma.exlibrisgroup.com/editor'}]},permissions:{contains:async()=>true},scripting:{executeScript:({func,args=[],files})=>files?Promise.resolve([]):window.runInRecord(func.toString(),args)}};
@@ -32,20 +34,23 @@ try{
   await route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(trans?{output,warnings:[]}:{arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:true}})});
  });
  await panel.goto(base+'/panel.html');
+ assert.equal(await panel.locator('#mode').count(),0);
  await record.locator('#marc').focus();await panel.getByText('Capture current field',{exact:true}).click();
  await panel.getByText('Load languages',{exact:true}).click();await panel.getByLabel('Language',{exact:true}).selectOption('arabic');
  await panel.getByText('Convert',{exact:true}).click();
- await panel.waitForFunction(()=>document.getElementById('output').value==='$$a al-Kitāb $$b wa-al-maktabah');
- assert.deepEqual(calls.map(call=>call.capitalize),['first',false]);
- assert.equal(await record.locator('#marc').inputValue(),'$$a الكتاب $$b والمكتبة');
+ const expected=EDITOR_MODE==='marc'?'$$a al-Kitāb $$b wa-al-maktabah':'al-Kitāb';
+ const original=EDITOR_MODE==='marc'?'$$a الكتاب $$b والمكتبة':'الكتاب';
+ await panel.waitForFunction(value=>document.getElementById('output').value===value,expected);
+ assert.deepEqual(calls.map(call=>call.capitalize),EDITOR_MODE==='marc'?['first',false]:['first']);
+ assert.equal(await record.locator('#marc').inputValue(),original);
  // Attempting to insert into the original nonempty field must fail.
  await panel.getByText('Insert conversion into current field',{exact:true}).click();
  await panel.getByText(/destination must be empty/).waitFor();
  await record.locator('#target').focus();await panel.getByText('Insert conversion into current field',{exact:true}).click();
- await record.waitForFunction(()=>document.getElementById('target').value==='$$a al-Kitāb $$b wa-al-maktabah');
- assert.equal(await record.locator('#marc').inputValue(),'$$a الكتاب $$b والمكتبة');
+ await record.waitForFunction(value=>document.getElementById('target').value===value,expected);
+ assert.equal(await record.locator('#marc').inputValue(),original);
  // BIBFRAME literal mode uses one request and the explicitly selected Name kind.
- await panel.locator('#mode').selectOption('bibframe');await record.locator('#name').focus();await record.locator('#name').evaluate(el=>el.setSelectionRange(el.value.length,el.value.length));
+ await record.locator('#name').focus();await record.locator('#name').evaluate(el=>el.setSelectionRange(el.value.length,el.value.length));
  await panel.getByText('Capture current field',{exact:true}).click();await panel.locator('#kind').selectOption('name');await panel.getByLabel('Language',{exact:true}).selectOption('arabic');
  await panel.getByText('Convert',{exact:true}).click();await panel.waitForFunction(()=>document.getElementById('output').value==='Aḥmad ʿAlī');assert.equal(calls.at(-1).capitalize,'all');
  // The offline picker writes the captured field and can undo it, without conversion.
@@ -59,5 +64,5 @@ try{
  await record.locator('#name').fill('changed');
  await panel.getByText('Insert selected mark into Alma field',{exact:true}).click();await panel.getByText(/field changed/).waitFor();
  await record.locator('#search').focus();await panel.getByText('Capture current field',{exact:true}).click();await panel.getByText(/Click an editable text input/).waitFor();
- console.log('PASS: MARC subfield conversion/casing, source preservation, empty-target insertion, BIBFRAME name literal conversion, direct offline diacritics/undo, stale-field protection and search rejection (mock API and Chrome bridge).');
+ console.log(`PASS: ${EDITOR_MODE} fixed editor, capitalization, source preservation, empty-target insertion, names, offline diacritics/undo, stale-field protection and search rejection (mock API and Chrome bridge).`);
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}

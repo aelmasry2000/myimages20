@@ -1,9 +1,8 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><title>ScriptShifter for Alma</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>ScriptShifter for Alma Metadata Editor</title>
 <style>body{font:14px system-ui;margin:16px;color:#172b4d}h1{font-size:20px}label{display:block;margin:10px 0}select,button,input{padding:7px;max-width:100%;margin:4px 0}textarea{width:96%;min-height:80px;font:inherit}article{border-top:1px solid #bac4ce;padding-top:10px;margin-top:14px}small{display:block;line-height:1.4}#status{white-space:pre-wrap}</style></head><body>
-<h1>ScriptShifter for Alma</h1>
+<h1>ScriptShifter for Alma Metadata Editor</h1>
 <p>Click a text field in Alma, then capture it here. This panel stays open while you switch fields.</p>
 <button id="enable">Enable on this Alma site</button>
-<label>Editor<select id="mode"><option value="marc">MARC Metadata Editor</option><option value="bibframe">Alma BIBFRAME editor</option></select></label>
 <button id="capture">Capture current field</button>
 <p id="status" role="status" aria-live="polite"></p>
 <section id="conversion" hidden>
@@ -14,7 +13,7 @@
 <button id="convert">Convert</button>
 <label>Converted field<textarea id="output" readonly></textarea></label>
 <button id="insert" disabled>Insert conversion into current field</button>
-<small>For a parallel value, first create the alternate field/property using Alma, click its empty text control, then insert here. The extension does not create MARC 880 links or BIBFRAME properties. Conversion sends text to bibframe.org; Alma credentials are never sent.</small>
+<small>For a parallel value, first create the alternate MARC field using Alma, click its empty text control, then insert here. Create and check MARC 880 linkage using Alma’s native tools. Conversion sends text to bibframe.org; Alma credentials are never sent.</small>
 </section>
 <section id="diacritics"></section>
 <footer><small>Copyright © 2026 Ayman El-Masry</small></footer>
