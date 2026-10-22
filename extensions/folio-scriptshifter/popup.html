@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>ScriptShifter for FOLIO</title>
+<style>
+body{font:14px system-ui;margin:16px;width:560px;color:#172b4d}h1{font-size:20px}button,select{padding:7px;margin:4px 4px 4px 0}article{border:1px solid #b5bec8;border-radius:6px;margin:12px 0;padding:12px}textarea{width:96%;min-height:65px;font:inherit}label{display:block;margin-top:8px}p{line-height:1.45}#status{white-space:pre-wrap}button{cursor:pointer}button:disabled{cursor:default}small{display:block;line-height:1.4}.source{white-space:pre-wrap;max-height:100px;overflow:auto}
+</style></head><body>
+<h1>ScriptShifter for FOLIO</h1>
+<p>Select the fields you want to transliterate. Review the language, direction and output before applying. Save the record in FOLIO yourself.</p>
+<small>Preview sends selected field text to https://bibframe.org/scriptshifter/. No FOLIO credentials are sent. Closing this popup discards its previews and undo history.</small>
+<button id="load">Load fields and languages</button>
+<p id="status" role="status" aria-live="polite">Open a FOLIO record form, then load its fields.</p><main id="fields"></main>
+<script type="module" src="popup.mjs"></script></body></html>

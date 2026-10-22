@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "ScriptShifter for FOLIO",
+  "version": "0.1.0",
+  "description": "Select FOLIO form fields, preview ScriptShifter transliterations, and apply reviewed results.",
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["https://bibframe.org/*"],
+  "action": {"default_popup": "popup.html"}
+}
