@@ -9,7 +9,7 @@ A standalone Chrome/Edge Manifest V3 extension for reviewing transliterations in
 3. Enable **Developer mode**, choose **Load unpacked**, and select the folder containing `manifest.json`.
 4. Open your FOLIO **New instance** form and enter the title or other text you want to transliterate. Click the extension in the browser toolbar.
 5. Click **Load fields and languages**. The extension lists populated, visible, editable text inputs and textareas inside one recognized Inventory New/Edit instance form. Search, Held by, sidebar filters and autocomplete lookup controls are excluded. Open one record form before loading fields. Select fields by using **Preview this field** only on fields you want to change.
-6. Confirm each language and conversion direction. Click **Preview this field** to send its text to ScriptShifter, review the output, then click **Apply to field**. Apply replaces that field's text. **Undo** restores it while the popup remains open, provided you have not edited it since applying.
+6. Confirm each language and conversion direction. For supported fields, click **Convert and add parallel field** to call ScriptShifter and insert a separate native FOLIO entry, keeping the original. Other fields retain the explicit **Preview this field** / **Apply to field** replacement workflow.
 7. Close the popup, verify the values in FOLIO, and use FOLIO's own save action. The extension never submits the record.
 
 ## Add diacritics to the current field
@@ -24,6 +24,17 @@ To switch fields, close the popup, click another FOLIO field, then reopen the ex
 The picker works offline with 2,450 Unicode marks. Combining marks attach after the cursor/selection, and text is normalized to NFC. Rendering depends on your font and browser. No text is sent to an external service by this mode. Automatic restoration is not implemented; the picker inserts marks you choose.
 
 To update an existing installation, download the latest repository ZIP, replace the extracted extension folder, and click **Reload** on its card in `chrome://extensions` or `edge://extensions`.
+
+## Parallel original-script and romanized values
+
+**Convert and add parallel field** detects the direction from the source text, uses the language you confirm, and inserts the conversion using FOLIO's own repeatable-field Add action. Conversion only starts when you click the button. Reverse conversion must be supported by the selected API language table. Existing identical values are not added again.
+
+- **Resource title:** a single-value field in FOLIO. Its conversion goes into the native **Alternative titles** section below it. Choose the required Alternative title type in FOLIO before saving. The extension cannot create a second saved Resource title with that same label; FOLIO defines the label and schema.
+- **Contributors → name, Notes → note, Series → value, Alternative titles → alternativeTitle:** a new entry in the same section. Relevant row metadata is copied, including contributor type and note Staff only. Primary contributor status is not duplicated. Contributor authority links are not copied to the converted name.
+- **Publication → publisher/place:** a new publication row, retaining the other visible publication values and role.
+- **Editions, physical descriptions, publication frequency/range:** a new scalar entry in the same repeatable section when the native controls match the supported Inventory structure.
+
+New entries are appended by FOLIO's native Add control; the extension does not reorder existing rows or fabricate labels. Unknown/nonrepeatable fields do not offer parallel insertion. Disabled Add controls are respected. Review all new rows and required fields before saving. Remove unwanted parallel entries using FOLIO's own row delete control. The extension does not save the record, create MARC 880 links, or validate a live shared-record save.
 
 ## Detection and capabilities
 
@@ -58,3 +69,11 @@ Use `CHROMIUM_PATH` if Chromium is not at `/usr/bin/chromium`. This test runs th
 ## Copyright
 
 Copyright © 2026 Ayman El-Masry.
+
+For native parallel-row insertion tests, run:
+
+```
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node parallel.test.mjs
+```
+
+These browser fixtures verify both conversion directions through the popup with a mock API, native alternative-title rows, duplicate protection, contributor metadata, staff-only notes, locked Add controls, unsupported fields and stale source values. Live API calls and actual FOLIO persistence still require testing in your browser.

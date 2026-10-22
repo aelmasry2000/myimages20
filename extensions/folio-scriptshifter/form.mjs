@@ -33,7 +33,7 @@ export function inspectForm(includeEmpty = false, focusedOnly = false) {
   const entries = inputs.map((el, index) => {
     const key = `${token}-${index}`;
     el.setAttribute('data-folio-scriptshifter', key);
-    return {key, label: label(el), text: el.value, selectionStart: el.selectionStart, selectionEnd: el.selectionEnd};
+    return {key, label: label(el), name: el.name, resourceTitle: el.name === 'title' || el.id === 'input_instance_title', text: el.value, selectionStart: el.selectionStart, selectionEnd: el.selectionEnd};
   });
   // Use a single unambiguous record-language control; do not infer from UI locale.
   const langs = [...scope.querySelectorAll('input, select')].filter(el => visible(el) &&
@@ -56,4 +56,81 @@ export function applyField(key, before, after, originalUrl) {
   el.dispatchEvent(new Event('input', {bubbles: true}));
   el.dispatchEvent(new Event('change', {bubbles: true}));
   return true;
+}
+
+// Use FOLIO's native repeatable-row action so React owns the new saved field.
+export async function addParallelField(key, before, converted, originalUrl) {
+  const fail = message => {throw new Error(message);};
+  if (location.href !== originalUrl) fail('The record page changed. Load the field again.');
+  const source = [...document.querySelectorAll('[data-folio-scriptshifter]')].find(el => el.getAttribute('data-folio-scriptshifter') === key);
+  if (!source || source.value !== before || source.disabled || source.readOnly || !source.getClientRects().length) fail('The original field changed. Load it again.');
+  if (!converted?.trim()) fail('No conversion to insert.');
+  const form = source.closest('form');
+  if (!form) fail('Record form not found.');
+  const name = source.name;
+  const title = name === 'title' || source.id === 'input_instance_title';
+  const match = name.match(/^(contributors|notes|series|alternativeTitles|publication|editions|physicalDescriptions|publicationFrequency|publicationRange)\[(\d+)\](?:\.(\w+))?$/);
+  const allowed = {contributors:['name'],notes:['note'],series:['value'],alternativeTitles:['alternativeTitle'],publication:['publisher','place'],editions:[''],physicalDescriptions:[''],publicationFrequency:[''],publicationRange:['']};
+  if (!title && (!match || !allowed[match[1]].includes(match[3] || ''))) fail('This field has no supported parallel entry. The original has been kept.');
+  const root = title ? 'alternativeTitles' : match[1];
+  const member = title ? 'alternativeTitle' : (match[3] || '');
+  const isTarget = el => new RegExp(`^${root}\\[\\d+\\]${member ? '\\.'+member : ''}$`).test(el.name);
+  let group = title ? form.querySelector('[name^="alternativeTitles["]')?.closest('fieldset') : source.closest('fieldset');
+  if (!group && title) {
+    const section = form.querySelector('#instanceSection02');
+    group = section?.querySelector('fieldset[data-test-repeatable-field]');
+    if (!group) group = [...form.querySelectorAll('fieldset[data-test-repeatable-field]')].find(el => /alternative titles?/i.test(el.querySelector('legend')?.textContent || ''));
+  }
+  if (!group) fail('The native repeatable section was not found. The original has been kept.');
+  const targets = () => [...group.querySelectorAll('input, textarea')].filter(isTarget);
+  if (targets().some(el => el.value === converted)) return {duplicate:true, needsType:false};
+  const button = group.querySelector('[data-test-repeatable-field-add-item-button]');
+  if (!button || button.disabled) fail('FOLIO does not allow adding another entry here. The original has been kept.');
+  const previous = new Set(targets().map(el => el.name));
+  // Snapshot editable row metadata before triggering a React rerender.
+  const sourceRow = title ? null : source.closest('[data-test-repeatable-field-list-item]');
+  const metadata = sourceRow ? [...sourceRow.querySelectorAll('input, textarea, select')].filter(el => el !== source && el.name && el.type !== 'hidden' && !el.name.endsWith('.primary')).map(el => ({
+    suffix: el.name.replace(new RegExp(`^${root}\\[\\d+\\]`), ''), value: el.value, checked: el.checked, type: el.type, tag:el.tagName
+  })) : [];
+  button.click();
+  const target = await new Promise((resolve,reject) => {
+    let timer;
+    const observer = new MutationObserver(check);
+    function check() {
+      const found = targets().find(el => !previous.has(el.name));
+      if (found) {observer.disconnect();clearTimeout(timer);resolve(found);}
+    }
+    observer.observe(group,{childList:true,subtree:true});
+    timer=setTimeout(()=>{observer.disconnect();reject(new Error('FOLIO did not create a parallel entry. Check the form before trying again.'));},4000);
+    check();
+  });
+  if (location.href !== originalUrl || !source.isConnected || source.value !== before) fail('The original field changed while adding the entry. Review the new blank row.');
+  if (target.disabled || target.readOnly || target.value) fail('The new field is not empty and editable. No text was replaced.');
+  const row = target.closest('[data-test-repeatable-field-list-item]');
+  const prefix = target.name.replace(new RegExp(member ? '\\.'+member+'$' : '$'), '');
+  function setValue(el, value) {
+    if (el.disabled || el.readOnly) fail('A new row control is locked. Review the new row in FOLIO.');
+    const proto = el.tagName === 'SELECT' ? HTMLSelectElement.prototype : el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    Object.getOwnPropertyDescriptor(proto,'value').set.call(el,value);
+    el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+  for (const info of metadata) {
+    const el = [...(row?.querySelectorAll('input, textarea, select') || [])].find(control => control.name === prefix+info.suffix);
+    if (!el) {if (info.value || info.checked) fail('Matching row metadata is unavailable. Review the new blank row.');continue;}
+    if (info.type === 'checkbox') {
+      if (el.checked !== info.checked) {if (el.disabled) fail('Row privacy settings are locked.');el.click();}
+    } else if (info.value) {
+      if (el.tagName === 'SELECT' && ![...el.options].some(o=>o.value===info.value)) fail('The source row type is not available. Review the new blank row.');
+      setValue(el,info.value);
+    }
+  }
+  setValue(target,converted);
+  let needsType = false;
+  if (title && row) {
+    const type = [...row.querySelectorAll('select')].find(el=>el.name.endsWith('.alternativeTitleTypeId'));
+    // Type names vary by tenant. Leave this explicit rather than inventing one.
+    needsType = !type?.value;
+  }
+  target.scrollIntoView({block:'nearest'});
+  return {duplicate:false,needsType};
 }

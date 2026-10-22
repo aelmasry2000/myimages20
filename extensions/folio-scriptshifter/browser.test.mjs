@@ -53,6 +53,40 @@ try {
  assert.equal(await record.locator('#title').inputValue(),'changed after preview');
  assert.equal(requests,2);
  await popup.unroute('https://bibframe.org/scriptshifter/**');
+ await popup.route('https://bibframe.org/scriptshifter/**', async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'content-type'}});return;}
+  const trans=route.request().url().endsWith('/trans');
+  const body=trans ? {output:route.request().postDataJSON().t_dir==='s2r'?'kitāb':'كتاب',warnings:[]} : {arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:true}};
+  await route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(body)});
+ });
+ await record.evaluate(()=>{
+  const title=document.querySelector('#title');title.name='title';title.value='كتاب';
+  const group=document.createElement('fieldset');group.setAttribute('data-test-repeatable-field','');
+  group.innerHTML='<legend>Alternative titles</legend><ul></ul><button type="button" data-test-repeatable-field-add-item-button>Add alternative title</button>';
+  group.querySelector('button').onclick=()=>{
+   const n=group.querySelectorAll('li').length;const row=document.createElement('li');row.setAttribute('data-test-repeatable-field-list-item','');
+   row.innerHTML=`<select name="alternativeTitles[${n}].alternativeTitleTypeId"><option value="">Choose type</option></select><textarea name="alternativeTitles[${n}].alternativeTitle"></textarea>`;
+   group.querySelector('ul').append(row);
+  };
+  document.querySelector('form').append(group);
+ });
+ await popup.getByText('Load fields and languages',{exact:true}).click();
+ await popup.getByText('Convert and add parallel field',{exact:true}).click();
+ await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[0].alternativeTitle"]')?.value==='kitāb');
+ assert.equal(await record.locator('#title').inputValue(),'كتاب');
+ await popup.getByText(/Choose an Alternative title type in FOLIO before saving/).waitFor();
+ await popup.getByText('Convert and add parallel field',{exact:true}).click();
+ await popup.getByText(/That parallel value is already present/).waitFor();
+ assert.equal(await record.locator('[name$=".alternativeTitle"]').count(),1);
+ await record.locator('#title').fill('kitāb');
+ await popup.getByText('Load fields and languages',{exact:true}).click();
+ await popup.locator('article').first().getByText('Convert and add parallel field',{exact:true}).click();
+ await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[1].alternativeTitle"]')?.value==='كتاب');
+ assert.equal(await record.locator('#title').inputValue(),'kitāb');
+ console.log('PASS: popup converts and adds native parallel title in both directions without replacing the original (mock API).');
+ // Restore fixture to one title/notes form for focused-field checks below.
+ await record.locator('fieldset').evaluate(el=>el.remove());
+ await popup.unroute('https://bibframe.org/scriptshifter/**');
  let offlineRequests = 0;
  await popup.route('https://bibframe.org/**', route => {offlineRequests++; return route.abort();});
  await record.locator('#title').fill('كتاب');
