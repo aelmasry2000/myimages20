@@ -57,3 +57,7 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node browser.test.mjs
 ```
 
 Use `CHROMIUM_PATH` if Chromium is not at `/usr/bin/chromium`. This test runs the popup and form bridge against a local fixture, with a mock ScriptShifter API and Chrome scripting bridge. It checks discovery, language metadata, preview, apply, input events, undo, stale text protection, offline Arabic mark insertion, and precomposed characters in empty fields. It does not validate packaged extension permissions or a live FOLIO installation.
+
+## Copyright
+
+Copyright © 2026 Ayman El-Masry.
