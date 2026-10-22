@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "ScriptShifter for Alma",
+  "version": "0.1.0",
+  "description": "Alma companion for ScriptShifter conversion and offline Unicode diacritics in focused text fields.",
+  "author": "Ayman El-Masry",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "https://bibframe.org/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.mjs",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Open ScriptShifter for Alma"
+  },
+  "side_panel": {
+    "default_path": "panel.html"
+  },
+  "minimum_chrome_version": "116"
+}
