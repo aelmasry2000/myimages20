@@ -7,9 +7,9 @@ const {chromium} = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = new URL('./', import.meta.url);
 const server = createServer(async (req,res) => {
  try {
-  if (req.url === '/record') {res.setHeader('Content-Type','text/html; charset=utf-8'); res.end('<label>Title<input id="title" value="كتاب"></label><label>Language<select><option>Arabic</option></select></label><label>Password<input type="password" value="secret"></label><script>window.events=[];document.querySelector("#title").addEventListener("input",e=>window.events.push(e.target.value))</script>'); return;}
+  if (req.url === '/record') {res.setHeader('Content-Type','text/html; charset=utf-8'); res.end('<label>Title<input id="title" value="كتاب"></label><label>Language<select><option>Arabic</option></select></label><label>Notes<input id="notes" value=""></label><label>Password<input type="password" value="secret"></label><script>window.events=[];document.querySelector("#title").addEventListener("input",e=>window.events.push(e.target.value))</script>'); return;}
   const name = req.url.slice(1) || 'popup.html';
-  if (!['popup.html','popup.mjs','core.mjs','form.mjs'].includes(name)) {res.writeHead(404).end();return;}
+  if (!['popup.html','popup.mjs','core.mjs','form.mjs','picker.mjs','diacritics.mjs','marks.json'].includes(name)) {res.writeHead(404).end();return;}
   res.setHeader('Content-Type', name.endsWith('.mjs')?'text/javascript':'text/html');
   res.end(await readFile(new URL(name,root)));
  } catch {res.writeHead(500).end();}
@@ -49,5 +49,28 @@ try {
  await popup.getByText(/Field changed since preview\. Refresh fields and preview again\./).waitFor();
  assert.equal(await record.locator('#title').inputValue(),'changed after preview');
  assert.equal(requests,2);
+ await popup.unroute('https://bibframe.org/scriptshifter/**');
+ let offlineRequests = 0;
+ await popup.route('https://bibframe.org/**', route => {offlineRequests++; return route.abort();});
+ await record.locator('#title').fill('كتاب');
+ await popup.getByText('Add diacritics (offline)',{exact:true}).click();
+ await popup.waitForFunction(()=>document.querySelectorAll('article').length===2);
+ const draft = popup.getByLabel('Title: diacritics draft',{exact:true});
+ await draft.focus(); await draft.evaluate(el=>el.setSelectionRange(1,1));
+ await popup.getByLabel('Title: search marks',{exact:true}).fill('ARABIC FATHA');
+ await popup.getByLabel('Title: Unicode mark',{exact:true}).selectOption('َ');
+ await popup.locator('article').first().getByText('Insert selected mark',{exact:true}).click();
+ assert.equal(await draft.inputValue(),'كَتاب');
+ await popup.locator('article').first().getByText('Apply diacritics to field',{exact:true}).click();
+ await record.waitForFunction(()=>document.querySelector('#title').value==='كَتاب');
+ await popup.locator('article').first().getByText('Undo diacritics',{exact:true}).click();
+ await record.waitForFunction(()=>document.querySelector('#title').value==='كتاب');
+ await popup.getByLabel('Notes: Unicode code point',{exact:true}).fill('U+00E9');
+ await popup.locator('article').nth(1).getByText('Insert code point',{exact:true}).click();
+ assert.equal(await popup.getByLabel('Notes: diacritics draft',{exact:true}).inputValue(),'é');
+ await popup.locator('article').nth(1).getByText('Apply diacritics to field',{exact:true}).click();
+ await record.waitForFunction(()=>document.querySelector('#notes').value==='é');
+ assert.equal(offlineRequests,0);
+ console.log('PASS: offline Arabic mark insertion at caret, apply/undo, empty field character insertion, and no API requests.');
  console.log('PASS: browser field discovery, metadata detection, preview, input events, apply, undo, stale-field protection, password exclusion (mock API and extension bridge).');
 } finally {await browser?.close();await new Promise(resolve=>server.close(resolve));}

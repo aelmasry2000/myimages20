@@ -1,7 +1,9 @@
+import {renderDiacritics} from './picker.mjs';
 import {apiRequest, detectDirection, suggestLanguage, assertSupported} from './core.mjs';
 import {inspectForm, applyField} from './form.mjs';
 const status = document.querySelector('#status');
 const load = document.querySelector('#load');
+const diacritics = document.querySelector('#diacritics');
 const fields = document.querySelector('#fields');
 function element(tag, text) {const el = document.createElement(tag); if (text) el.textContent = text; return el;}
 async function execute(tabId, func, args = []) {
@@ -10,7 +12,7 @@ async function execute(tabId, func, args = []) {
   return result[0].result;
 }
 load.addEventListener('click', async () => {
-  load.disabled = true; fields.replaceChildren(); status.textContent = 'Loading…';
+  load.disabled = true; diacritics.disabled = true; fields.replaceChildren(); status.textContent = 'Loading…';
   try {
     const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
     if (!tab?.id || !/^https?:/.test(tab.url || '')) throw new Error('Open the FOLIO form in a normal browser tab.');
@@ -18,7 +20,7 @@ load.addEventListener('click', async () => {
     for (const entry of form.entries) render(entry, tables, tab.id, form);
     status.textContent = form.entries.length ? `${form.entries.length} populated text fields found. Only preview fields you intend to convert.` : 'No populated editable text fields found. Enter text in the record first.';
   } catch (error) {status.textContent = error.message;}
-  finally {load.disabled = false;}
+  finally {load.disabled = false; diacritics.disabled = false;}
 });
 function render(entry, tables, tabId, form) {
   const card = element('article');
@@ -72,3 +74,21 @@ function render(entry, tables, tabId, form) {
   });
   card.append(preview, output, apply, undo, message); fields.append(card);
 }
+
+diacritics.addEventListener('click', async () => {
+  load.disabled = true; diacritics.disabled = true; fields.replaceChildren(); status.textContent = 'Loading diacritics…';
+  try {
+    const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+    if (!tab?.id || !/^https?:/.test(tab.url || '')) throw new Error('Open the FOLIO form in a normal browser tab.');
+    const [catalog, form] = await Promise.all([
+      fetch(new URL('./marks.json', import.meta.url)).then(response => {
+        if (!response.ok) throw new Error('Cannot load the bundled Unicode catalog.');
+        return response.json();
+      }), execute(tab.id, inspectForm, [true])
+    ]);
+    for (const entry of form.entries) fields.append(renderDiacritics(entry, catalog.marks,
+      (before, after) => execute(tab.id, applyField, [entry.key, before, after, form.url])));
+    status.textContent = `${form.entries.length} editable text fields. ${catalog.marks.length} Unicode marks available. All diacritics editing stays in this browser.`;
+  } catch (error) {status.textContent = error.message;}
+  finally {load.disabled = false; diacritics.disabled = false;}
+});

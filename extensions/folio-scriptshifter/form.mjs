@@ -1,5 +1,5 @@
 // Executed in the active tab only after the extension button is clicked.
-export function inspectForm() {
+export function inspectForm(includeEmpty = false) {
   const visible = el => !!el.getClientRects().length && !el.disabled && !el.readOnly &&
     !el.closest('[hidden], [aria-hidden="true"]');
   const labelText = node => {
@@ -10,7 +10,7 @@ export function inspectForm() {
   const label = el => [...(el.labels || [])].map(labelText).join(' ') ||
     el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.name || el.id || 'Unlabelled field';
   const inputs = [...document.querySelectorAll('input, textarea')].filter(el =>
-    (el.tagName === 'TEXTAREA' || ['text', ''].includes(el.type)) && visible(el) && el.value.trim());
+    (el.tagName === 'TEXTAREA' || ['text', ''].includes(el.type)) && visible(el) && (includeEmpty || el.value.trim()));
   const token = crypto.randomUUID();
   const entries = inputs.map((el, index) => {
     const key = `${token}-${index}`;
