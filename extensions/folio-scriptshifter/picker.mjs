@@ -10,22 +10,37 @@ export function renderDiacritics(entry, marks, applyToField) {
   search.setAttribute('aria-label', `${entry.label}: search marks`);
   const choices = element('select'); choices.setAttribute('aria-label', `${entry.label}: Unicode mark`);
   const count = element('small');
-  const groups = groupMarks(marks);
+  const groups = groupMarks(marks).map(group => ({...group, marks:group.marks.map(mark => ({...mark,
+    searchText:`${group.name} ${mark.name} ${mark.code} ${mark.character}`.toUpperCase()
+  }))}));
+  const script = element('select'); script.setAttribute('aria-label', `${entry.label}: language or script`);
+  script.append(new Option('All languages / scripts',''), ...groups.map(group=>new Option(group.name,group.name)));
+  const firstLetter=[...entry.text].find(character=>/\p{Letter}/u.test(character));
+  let initial='Shared combining marks';
+  if(firstLetter && !/\p{Script=Latin}/u.test(firstLetter)) {
+    initial=groups.find(group=>{try{return new RegExp(`\\p{Script=${group.name.replaceAll(' ','_')}}`,'u').test(firstLetter);}catch{return false;}})?.name || initial;
+  }
+  script.value=groups.some(group=>group.name===initial)?initial:'';
   function filter() {
     const words = search.value.trim().toUpperCase().split(/\s+/).filter(Boolean);
     let total = 0;
     const options = [];
+    let shown = 0;
     for (const group of groups) {
-      const matches = group.marks.filter(mark => words.every(word => `${group.name} ${mark.name} ${mark.code} ${mark.character}`.toUpperCase().includes(word)));
-      if (!matches.length) continue;
+      if (script.value && group.name !== script.value) continue;
+      const matches = group.marks.filter(mark => words.every(word => mark.searchText.includes(word)));
+      total += matches.length;
+      const visible = script.value ? matches : matches.slice(0, Math.max(0,200-shown));
+      if (!visible.length) continue;
       const optgroup = element('optgroup'); optgroup.label = group.name;
-      optgroup.append(...matches.map(mark => new Option(`${mark.name} — ${'◌'+mark.character}`, mark.character)));
-      options.push(optgroup); total += matches.length;
+      optgroup.append(...visible.map(mark => new Option(`${mark.name} — ${'◌'+mark.character}`, mark.character)));
+      options.push(optgroup); shown += visible.length;
     }
     choices.replaceChildren(...options);
-    count.textContent = `${total} matching marks.`;
+    count.textContent = `${total} matching marks.${shown<total?' Showing the first 200; choose a language or refine your search.':''}`;
   }
-  search.addEventListener('input', filter); filter();
+  search.addEventListener('input', () => {if(search.value.trim()) script.value=''; filter();});
+  script.addEventListener('change',filter); filter();
   const insert = element('button', 'Insert selected mark into FOLIO field');
   const apply = element('button', 'Apply edited draft to field'); apply.disabled = true;
   const undo = element('button', 'Undo diacritics'); undo.disabled = true;
@@ -67,7 +82,7 @@ export function renderDiacritics(entry, marks, applyToField) {
       update(); message.textContent = 'Original text restored.';
     }
   });
-  card.append(label('Search Unicode marks',search), choices, count, insert,
+  card.append(label('Language / script',script), label('Search Unicode marks',search), choices, count, insert,
     apply, undo, message);
   return card;
 }

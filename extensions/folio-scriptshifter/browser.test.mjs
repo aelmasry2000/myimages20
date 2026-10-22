@@ -33,7 +33,13 @@ try {
  await popup.goto(base+'/popup.html');
  await popup.getByLabel('Title: diacritics draft',{exact:true}).waitFor();
  assert.equal(await popup.locator('article').count(),1);
- await popup.getByText('Load fields and languages',{exact:true}).click();
+ assert.equal(await popup.getByLabel('Title: language or script',{exact:true}).inputValue(),'Arabic');
+ assert.ok(await popup.getByLabel('Title: Unicode mark',{exact:true}).locator('option').count()<250);
+ await popup.getByLabel('Title: language or script',{exact:true}).selectOption('');
+ assert.ok(await popup.getByLabel('Title: Unicode mark',{exact:true}).locator('option').count()<=200);
+ await popup.getByLabel('Title: search marks',{exact:true}).fill('HEBREW POINT SHEVA');
+ assert.ok(await popup.getByLabel('Title: Unicode mark',{exact:true}).locator('option').count()>0);
+ await popup.getByText('Transliterate current field',{exact:true}).click();
  await popup.waitForFunction(()=>document.querySelectorAll('article').length===1);
  assert.equal(await popup.getByLabel('Title: language',{exact:true}).inputValue(),'arabic');
  assert.equal(await popup.getByLabel('Title: direction',{exact:true}).inputValue(),'s2r');
@@ -70,7 +76,7 @@ try {
   };
   document.querySelector('form').append(group);
  });
- await popup.getByText('Load fields and languages',{exact:true}).click();
+ await popup.getByText('Transliterate current field',{exact:true}).click();
  await popup.getByText('Convert and add parallel field',{exact:true}).click();
  await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[0].alternativeTitle"]')?.value==='kitāb');
  assert.equal(await record.locator('#title').inputValue(),'كتاب');
@@ -79,7 +85,7 @@ try {
  await popup.getByText(/That parallel value is already present/).waitFor();
  assert.equal(await record.locator('[name$=".alternativeTitle"]').count(),1);
  await record.locator('#title').fill('kitāb');
- await popup.getByText('Load fields and languages',{exact:true}).click();
+ await popup.getByText('Transliterate current field',{exact:true}).click();
  await popup.locator('article').first().getByText('Convert and add parallel field',{exact:true}).click();
  await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[1].alternativeTitle"]')?.value==='كتاب');
  assert.equal(await record.locator('#title').inputValue(),'kitāb');

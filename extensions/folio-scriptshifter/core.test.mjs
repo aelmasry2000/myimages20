@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {detectDirection, suggestLanguage, assertSupported, apiRequest, API} from './core.mjs';
+import {detectDirection, suggestLanguage, assertSupported, apiRequest, API, loadLanguages} from './core.mjs';
 const tables = {arabic: {label:'Arabic', marc_code:'ara', has_s2r:true, has_r2s:false}, korean:{label:'Korean',marc_code:'kor',has_s2r:true,has_r2s:true}};
 test('direction distinguishes script, romanization, mixed and nonletter text', () => {
  assert.equal(detectDirection('كتاب'), 's2r'); assert.equal(detectDirection('kitāb'), 'r2s');
@@ -27,4 +27,14 @@ test('API sends required payload to documented endpoint without cookies', async 
 test('HTTP failures and empty outputs cannot become previews', async () => {
  await assert.rejects(apiRequest('trans', {}, async()=>({ok:false,status:403})), /403/);
  await assert.rejects(apiRequest('trans', {}, async()=>({ok:true,json:async()=>({output:''})})), /no usable/);
+});
+
+test('language metadata cache avoids repeated requests, expires, and stores no field text',async()=>{
+ let stored={},calls=0;
+ const cache={get:async()=>stored,set:async value=>{stored=value;}};
+ const request=async path=>{assert.equal(path,'languages');calls++;return tables;};
+ assert.deepEqual(await loadLanguages(cache,request,100),tables);
+ assert.deepEqual(await loadLanguages(cache,request,200),tables);assert.equal(calls,1);
+ assert.deepEqual(Object.keys(stored.scriptshifterLanguagesV1),['savedAt','tables']);
+ await loadLanguages(cache,request,86400200);assert.equal(calls,2);
 });

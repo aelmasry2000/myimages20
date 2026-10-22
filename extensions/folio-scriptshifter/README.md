@@ -8,7 +8,7 @@ A standalone Chrome/Edge Manifest V3 extension for reviewing transliterations in
 2. In Chrome open `chrome://extensions`, or in Edge open `edge://extensions`.
 3. Enable **Developer mode**, choose **Load unpacked**, and select the folder containing `manifest.json`.
 4. Open your FOLIO **New instance** form and enter the title or other text you want to transliterate. Click the extension in the browser toolbar.
-5. Click **Load fields and languages**. The extension lists populated, visible, editable text inputs and textareas inside one recognized Inventory New/Edit instance form. Search, Held by, sidebar filters and autocomplete lookup controls are excluded. Open one record form before loading fields. Select fields by using **Preview this field** only on fields you want to change.
+5. Click **Transliterate current field**. The extension loads only the currently focused, populated text field inside one recognized Inventory New/Edit instance form. Search, Held by, sidebar filters and autocomplete lookup controls are excluded. Open one record form before loading fields. Select fields by using **Preview this field** only on fields you want to change.
 6. Confirm each language and conversion direction. For supported fields, click **Convert and add parallel field** to call ScriptShifter and insert a separate native FOLIO entry, keeping the original. Other fields retain the explicit **Preview this field** / **Apply to field** replacement workflow.
 7. Close the popup, verify the values in FOLIO, and use FOLIO's own save action. The extension never submits the record.
 
@@ -21,7 +21,7 @@ A standalone Chrome/Edge Manifest V3 extension for reviewing transliterations in
 
 To switch fields, close the popup, click another FOLIO field, then reopen the extension. **Use current field** refreshes the selected field. Search and Held by controls cannot be selected as record fields.
 
-The picker works offline with 2,450 Unicode marks. Each option starts with its Unicode name, followed by its symbol. Marks are grouped by Unicode script and sorted alphabetically by name within each group; search preserves that ordering. Shared marks appear in a separate group because scripts and languages do not have a one-to-one mapping. Group metadata uses the Unicode 15.0 Scripts.txt data from the Unicode Consortium. Combining marks attach after the cursor/selection, and text is normalized to NFC. Rendering depends on your font and browser. No text is sent to an external service by this mode. Automatic restoration is not implemented; the picker inserts marks you choose.
+The picker works offline with 2,450 Unicode marks. Each option starts with its Unicode name, followed by its symbol. To keep opening fast, the picker initially shows the script detected from the field (shared marks for Latin text). Use **Language / script** to switch groups. Typing a search automatically searches across all groups. All-script searches display at most 200 results; selecting a script displays its full matching list. Marks are grouped by Unicode script and sorted alphabetically by name within each group; search preserves that ordering. Shared marks appear in a separate group because scripts and languages do not have a one-to-one mapping. Group metadata uses the Unicode 15.0 Scripts.txt data from the Unicode Consortium. Combining marks attach after the cursor/selection, and text is normalized to NFC. Rendering depends on your font and browser. No text is sent to an external service by this mode. Automatic restoration is not implemented; the picker inserts marks you choose.
 
 To update an existing installation, download the latest repository ZIP, replace the extracted extension folder, and click **Reload** on its card in `chrome://extensions` or `edge://extensions`.
 
@@ -42,7 +42,7 @@ The extension reads a single visible Language control when it can identify one, 
 
 Direction is suggested as original script to romanization for non-Latin letters and romanization to original script for Latin letters. Mixed-script text requires an explicit direction. Latin text may already be a native Latin language, rather than romanization: confirm before sending. Reverse conversion is available only when the selected API table advertises it; not all romanization is reversible.
 
-The language list comes from `GET /languages`. Previews use `POST /trans` with `lang`, `text`, `t_dir`, `capitalize: "no_change"` and `options: {}`. API warnings are displayed. This prototype uses default options; it does not yet expose table-specific capitalization/name options.
+The language list comes from `GET /languages` and is cached locally for 24 hours to avoid downloading it each time. Only public language metadata is stored, never record text or conversion output. The `storage` permission is used for this cache. Previews use `POST /trans` with `lang`, `text`, `t_dir`, `capitalize: "no_change"` and `options: {}`. API warnings are displayed. This prototype uses default options; it does not yet expose table-specific capitalization/name options.
 
 ## Scope and limitations
 

@@ -53,3 +53,19 @@ export async function apiRequest(path, body, fetcher = fetch) {
   }
   return data;
 }
+
+// Cache public language metadata only; field text and conversions are never stored.
+export async function loadLanguages(cache = globalThis.chrome?.storage?.local, request = apiRequest, now = Date.now()) {
+  const key='scriptshifterLanguagesV1';
+  if (cache) {
+    try {
+      const saved=(await cache.get(key))[key];
+      if (saved && now>=saved.savedAt && now-saved.savedAt<86400000 &&
+          saved.tables && typeof saved.tables === 'object' && !Array.isArray(saved.tables) && Object.keys(saved.tables).length &&
+          Object.values(saved.tables).every(table=>table && typeof table.label === 'string')) return saved.tables;
+    } catch { /* Storage failure should not prevent a live fetch. */ }
+  }
+  const tables=await request('languages');
+  if(cache) {try{await cache.set({[key]:{savedAt:now,tables}});}catch{}}
+  return tables;
+}

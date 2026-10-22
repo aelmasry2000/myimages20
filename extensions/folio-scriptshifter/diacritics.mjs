@@ -17,6 +17,7 @@ export function parseCodePoint(value) {
   return character;
 }
 
+const markCollator = new Intl.Collator('en');
 export function groupMarks(marks) {
   const groups = new Map();
   for (const mark of marks) {
@@ -24,7 +25,7 @@ export function groupMarks(marks) {
     if (!groups.has(name)) groups.set(name, []);
     groups.get(name).push(mark);
   }
-  return [...groups].sort(([a], [b]) => a.localeCompare(b, 'en')).map(([name, entries]) => ({
-    name, marks: entries.sort((a,b) => a.name.localeCompare(b.name, 'en') || a.code.localeCompare(b.code))
+  return [...groups].sort(([a], [b]) => markCollator.compare(a,b)).map(([name, entries]) => ({
+    name, marks: entries.sort((a,b) => markCollator.compare(a.name,b.name) || a.code.localeCompare(b.code))
   }));
 }

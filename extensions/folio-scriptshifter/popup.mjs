@@ -1,5 +1,5 @@
 import {renderDiacritics} from './picker.mjs';
-import {apiRequest, detectDirection, suggestLanguage, assertSupported} from './core.mjs';
+import {apiRequest, detectDirection, suggestLanguage, assertSupported, loadLanguages} from './core.mjs';
 import {inspectForm, applyField, addParallelField} from './form.mjs';
 const status = document.querySelector('#status');
 const load = document.querySelector('#load');
@@ -12,13 +12,13 @@ async function execute(tabId, func, args = []) {
   return result[0].result;
 }
 load.addEventListener('click', async () => {
-  load.disabled = true; diacritics.disabled = true; fields.replaceChildren(); status.textContent = 'Loading…';
+  load.disabled = true; diacritics.disabled = true; fields.replaceChildren(); status.textContent = 'Loading ScriptShifter languages…';
   try {
     const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
     if (!tab?.id || !/^https?:/.test(tab.url || '')) throw new Error('Open the FOLIO form in a normal browser tab.');
-    const [tables, form] = await Promise.all([apiRequest('languages'), execute(tab.id, inspectForm)]);
+    const [tables, form] = await Promise.all([loadLanguages(), execute(tab.id, inspectForm, [false, true])]);
     for (const entry of form.entries) render(entry, tables, tab.id, form);
-    status.textContent = form.entries.length ? `${form.entries.length} populated text fields found. Only preview fields you intend to convert.` : 'No populated editable text fields found. Enter text in the record first.';
+    status.textContent = `Transliterating: ${form.entries[0].label}`;
   } catch (error) {status.textContent = error.message;}
   finally {load.disabled = false; diacritics.disabled = false;}
 });
@@ -49,11 +49,13 @@ function render(entry, tables, tabId, form) {
   lang.addEventListener('change', invalidate); direction.addEventListener('change', invalidate);
   preview.addEventListener('click', async () => {
     invalidate(); preview.disabled = true; lang.disabled = true; direction.disabled = true;
+    message.textContent = 'Waiting for ScriptShifter conversion…';
     try {
       assertSupported(tables, lang.value, direction.value);
       const data = await apiRequest('trans', {lang: lang.value, text: before, t_dir: direction.value, capitalize: 'no_change', options: {}});
       output.value = data.output; apply.disabled = data.output === before;
       if (parallel && data.output !== before) {
+        message.textContent = 'Adding the converted entry in FOLIO…';
         const result = await execute(tabId, addParallelField, [entry.key, before, data.output, form.url]);
         message.textContent = [result.duplicate ? 'That parallel value is already present.' : 'Added a parallel entry. The original is unchanged.', result.needsType ? 'Choose an Alternative title type in FOLIO before saving.' : 'Review the new entry and save in FOLIO.', ...(data.warnings || [])].join('\n');
         return;
