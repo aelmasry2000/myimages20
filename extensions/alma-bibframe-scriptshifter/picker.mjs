@@ -1,4 +1,4 @@
-import {insertCharacter, groupMarks} from './diacritics.mjs';
+import {insertCharacter, groupMarks, pickerMarks} from './diacritics.mjs';
 function element(tag, text) {const el = document.createElement(tag); if (text) el.textContent = text; return el;}
 function label(text, input) {const el = element('label', text); el.append(input); return el;}
 export function renderDiacritics(entry, marks, applyToField, languages = []) {
@@ -10,7 +10,7 @@ export function renderDiacritics(entry, marks, applyToField, languages = []) {
   search.setAttribute('aria-label', `${entry.label}: search marks`);
   const choices = element('select'); choices.setAttribute('aria-label', `${entry.label}: romanization character`);
   const count = element('small');
-  const indexed = groupMarks(marks);
+  const indexed = groupMarks(pickerMarks(marks, languages));
   for (const language of languages) if (!indexed.some(group=>group.name===language.label))indexed.push({name:language.label,marks:[]});
   const groups = indexed.sort((a,b)=>a.name.localeCompare(b.name,'en')).map(group => ({...group, marks:group.marks.map(mark => ({...mark,
     searchText:`${group.name} ${mark.name} ${mark.unicode_name || ''} ${mark.code} ${mark.character}`.toUpperCase()
@@ -37,13 +37,13 @@ export function renderDiacritics(entry, marks, applyToField, languages = []) {
       const visible = script.value ? matches : matches.slice(0, Math.max(0,200-shown));
       if (!visible.length) continue;
       const optgroup = element('optgroup'); optgroup.label = group.name;
-      optgroup.append(...visible.map(mark => new Option(`${mark.name} — ${/^\p{Mark}+$/u.test(mark.character)?'◌':''}${mark.character}`, mark.character)));
+      optgroup.append(...visible.map(mark => new Option(mark.name, mark.character)));
       options.push(optgroup); shown += visible.length;
     }
     choices.replaceChildren(...options);
-    count.textContent = total ? `${total} documented romanization characters.${shown<total?' Showing the first 200; choose a language or refine your search.':''}` : 'No documented romanization characters found for this selection.';
+    count.textContent = total ? `${total} available marks and romanization signs.${shown<total?' Showing the first 200; choose a language or refine your search.':''}` : 'No matching marks found.';
   }
-  search.addEventListener('input', () => {if(search.value.trim()) script.value=''; filter();});
+  search.addEventListener('input', filter);
   script.addEventListener('change',filter); filter();
   const insert = element('button', 'Insert character into Alma field');
   const apply = element('button', 'Apply edited draft to field'); apply.disabled = true;
@@ -86,7 +86,7 @@ export function renderDiacritics(entry, marks, applyToField, languages = []) {
       update(); message.textContent = 'Original text restored.';
     }
   });
-  card.append(label('ScriptShifter language',script), label('Search romanization characters',search), choices, count, insert,
+  card.append(element('small', 'Select a letter in the draft, or place the cursor immediately after it. Combining marks are available in every language; choose the mark required by your cataloging rules.'), label('ScriptShifter language',script), label('Search romanization characters',search), choices, count, insert,
     apply, undo, message);
   return card;
 }

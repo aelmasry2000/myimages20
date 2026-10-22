@@ -175,7 +175,7 @@ try {
  const markChoices=popup.getByLabel('Title: romanization character',{exact:true});
  const labels=await markChoices.locator('option').allTextContents();
  assert.ok(labels.length>0);
- assert.ok(labels.every(text=>/^Ayn .* — ʻ/u.test(text)));
+ assert.ok(labels.every(text=>/^Ayn /u.test(text)));
  assert.deepEqual(labels,[...labels].sort((a,b)=>a.localeCompare(b,'en')));
  assert.equal(await markChoices.locator('optgroup').first().getAttribute('label'),'Arabic');
  await markChoices.selectOption('ʻ');
@@ -184,6 +184,16 @@ try {
  await record.waitForFunction(()=>document.querySelector('#title').value==='ʻAli');
  await popup.locator('article').first().getByText('Undo diacritics',{exact:true}).click();
  await record.waitForFunction(()=>document.querySelector('#title').value==='Ali');
+ await draft.fill('q');
+ await draft.evaluate(el=>el.setSelectionRange(0,1));
+ await popup.getByLabel('Title: search marks',{exact:true}).fill('Dot below');
+ assert.equal(await popup.getByLabel('Title: character language',{exact:true}).inputValue(),'Arabic');
+ await markChoices.selectOption('\u0323');
+ await popup.getByText('Insert character into FOLIO field',{exact:true}).click();
+ await record.waitForFunction(()=>document.querySelector('#title').value.normalize('NFD')==='q\u0323');
+ await popup.getByText('Undo diacritics',{exact:true}).click();
+ await record.waitForFunction(()=>document.querySelector('#title').value==='Ali');
+
  assert.equal(await popup.getByRole('button', {name:'Insert code point into FOLIO field',exact:true}).count(),0);
  await record.locator('#notes').focus();
  await popup.getByText('Use current field',{exact:true}).click();

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {insertCharacter, parseCodePoint, groupMarks} from './diacritics.mjs';
+import {insertCharacter, parseCodePoint, groupMarks, pickerMarks} from './diacritics.mjs';
 test('Latin mark composes without replacing a selected base letter',()=>{
  assert.deepEqual(insertCharacter('cafe',3,4,'\u0301'),{text:'café',cursor:4});
 });
@@ -42,4 +42,15 @@ test('characters are grouped by language and sorted by name without mutating the
  assert.deepEqual(result.map(group=>group.name),['Arabic','Hebrew']);
  assert.deepEqual(result[0].marks.map(mark=>mark.name),['ARABIC FATHA','ARABIC SHADDA']);
  assert.equal(input[0].name,'HEBREW POINT SHEVA');
+});
+
+test('picker exposes combining marks for every language without complete accented letters',()=>{
+ const marks=pickerMarks([{character:'ḥ',name:'LATIN SMALL LETTER H WITH DOT BELOW',group:'Arabic',code:'U+1E25'}, {character:'\u0323',name:'COMBINING DOT BELOW',group:'Arabic',code:'U+0323'}, {character:'ʻ',name:'Ayn',group:'Arabic',code:'U+02BB'}], [{label:'French'}]);
+ assert.ok(!marks.some(mark=>mark.character==='ḥ'));
+ assert.ok(marks.some(mark=>mark.group==='French' && mark.name==='Dot below'));
+ assert.ok(marks.some(mark=>mark.character==='ʻ'));
+ for(const letter of ['b','q','x','Z']) {
+  const result=insertCharacter(letter,0,1,'\u0323');
+  assert.equal(result.text.normalize('NFD'),letter+'\u0323');
+ }
 });

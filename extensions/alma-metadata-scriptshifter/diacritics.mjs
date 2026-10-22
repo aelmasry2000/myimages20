@@ -29,3 +29,14 @@ export function groupMarks(marks) {
     name, marks: entries.sort((a,b) => markCollator.compare(a.name,b.name) || a.code.localeCompare(b.code))
   }));
 }
+
+// Combining marks work independently of whether Unicode has a precomposed letter.
+export function pickerMarks(marks, languages = []) {
+  const combining = new Map();
+  for (const mark of marks) if (/^\p{Mark}+$/u.test(mark.character)) combining.set(mark.character, mark);
+  const groups = new Set([...languages.map(language => language.label), ...marks.map(mark => mark.group)]);
+  const result = marks.filter(mark => !/^\p{Mark}+$/u.test(mark.character) && !/\p{Letter}/u.test(mark.character.normalize('NFD').replace(/[ʻʼʽʾʿʹʺˀˁ]/gu, '')));
+  for (const group of groups) for (const mark of combining.values()) result.push({...mark, group,
+    name: mark.name.replace(/^COMBINING /, '').toLowerCase().replace(/^./, c => c.toUpperCase())});
+  return result;
+}
