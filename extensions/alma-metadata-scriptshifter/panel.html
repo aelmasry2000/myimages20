@@ -11,7 +11,11 @@
 <label>Direction<select id="direction"><option value="s2r">Original script → Romanization</option><option value="r2s">Romanization → Original script</option></select></label>
 <label>Field kind<select id="kind"><option value="text">Title / other text — first word capitalized</option><option value="name">Personal / corporate / publisher / printer / producer name — every word capitalized</option></select></label>
 <button id="convert">Convert</button>
-<label>Converted field<textarea id="output" readonly></textarea></label>
+<label>Converted field<textarea id="output"></textarea></label>
+<label><input type="checkbox" id="reverse"> Also remember the reverse mapping</label>
+<button id="remember" disabled>Remember reviewed correction</button>
+<button id="forget">Forget saved correction</button>
+<small>Saved corrections stay in this browser and contain the source and corrected text. Review each result before insertion.</small>
 <button id="insert" disabled>Insert conversion into current field</button>
 <small>For a parallel value, first create the alternate MARC field using Alma, click its empty text control, then insert here. Create and check MARC 880 linkage using Alma’s native tools. Conversion sends text to bibframe.org; Alma credentials are never sent.</small>
 </section>

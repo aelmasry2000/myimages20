@@ -1,4 +1,4 @@
-# ScriptShifter for Alma Metadata Editor — 0.2.0 prototype
+# ScriptShifter for Alma Metadata Editor — 0.3.0 prototype
 
 Copyright © 2026 Ayman El-Masry.
 
@@ -25,7 +25,7 @@ A separate Chrome 116+/recent Edge side-panel extension reusing the FOLIO extens
 
 The extension is independent of the library hostname, but actual support depends on Alma's UI version. Custom rich-text widgets, contenteditable editors, CodeMirror/Monaco models, dropdowns, identifiers, unsupported cross-origin frames and saved model integration require further adapters/testing. Unsupported controls are rejected. A changed field or page invalidates insertion.
 
-The site grant covers the specific origin requested. A Metadata Editor hosted at another origin may need separate access and additional integration work. Focus timing is tracked in each allowed frame's isolated extension world; record text is not persistently stored. Only public ScriptShifter language metadata is cached for 24 hours. The panel's source/output and undo history exist only while it stays open. ScriptShifter's own data handling applies to conversion requests.
+The site grant covers the specific origin requested. A Metadata Editor hosted at another origin may need separate access and additional integration work. Focus timing is tracked in each allowed frame's isolated extension world; record text is not persistently stored unless you explicitly save a reviewed correction. Public ScriptShifter language metadata is cached for 24 hours. **Remember reviewed correction** additionally stores the exact source and corrected text locally, keyed by language and direction. You can opt in to the inverse mapping; conflicting inverse values are not overwritten. Use **Forget saved correction** to remove the current direction. These are manual reviewed mappings, not authority validation. Saved corrections are separate for each installed extension. The panel's source/output and undo history exist only while it stays open. ScriptShifter's own data handling applies to conversion requests.
 
 The broad optional HTTPS permission lets the browser request an individual institution's origin, including custom Alma hostnames. It is not a default grant to every website. The extension requests no Alma API keys. It neither saves nor publishes library records.
 

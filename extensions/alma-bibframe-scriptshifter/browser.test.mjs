@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root=new URL('./',import.meta.url);
-const files=new Set(['panel.html','panel.mjs','mode.mjs','adapter.mjs','core.mjs','marc.mjs','picker.mjs','diacritics.mjs','marks.json']);
+const files=new Set(['panel.html','panel.mjs','mode.mjs','corrections.mjs','adapter.mjs','core.mjs','marc.mjs','picker.mjs','diacritics.mjs','marks.json']);
 const server=createServer(async(req,res)=>{
  try{
   const name=req.url.slice(1);
@@ -23,7 +23,7 @@ try{
  if(EDITOR_MODE==='bibframe')await record.locator('#marc').fill('الكتاب');
  await panel.exposeFunction('runInRecord',async(source,args)=>[{frameId:0,result:await record.evaluate(({source,args})=>(0,eval)(`(${source})`)(...args),{source,args})}]);
  await panel.addInitScript(({url})=>{
-  window.chrome={tabs:{query:async()=>[{id:1,url:'https://example.alma.exlibrisgroup.com/editor'}]},permissions:{contains:async()=>true},scripting:{executeScript:({func,args=[],files})=>files?Promise.resolve([]):window.runInRecord(func.toString(),args)}};
+  window.correctionStore={};window.chrome={storage:{local:{get:async key=>key.startsWith('scriptshifterCorrectionV1:')?{[key]:window.correctionStore[key]}:{},set:async entries=>{for(const [key,value] of Object.entries(entries))if(key.startsWith('scriptshifterCorrectionV1:'))window.correctionStore[key]=value;},remove:async key=>{delete window.correctionStore[key];}}},tabs:{query:async()=>[{id:1,url:'https://example.alma.exlibrisgroup.com/editor'}]},permissions:{contains:async()=>true},scripting:{executeScript:({func,args=[],files})=>files?Promise.resolve([]):window.runInRecord(func.toString(),args)}};
  },{url:base+'/record'});
  const calls=[];
  await panel.route('https://bibframe.org/scriptshifter/**',async route=>{
@@ -53,6 +53,15 @@ try{
  await record.locator('#name').focus();await record.locator('#name').evaluate(el=>el.setSelectionRange(el.value.length,el.value.length));
  await panel.getByText('Capture current field',{exact:true}).click();await panel.locator('#kind').selectOption('name');await panel.getByLabel('Language',{exact:true}).selectOption('arabic');
  await panel.getByText('Convert',{exact:true}).click();await panel.waitForFunction(()=>document.getElementById('output').value==='Aḥmad ʿAlī');assert.equal(calls.at(-1).capitalize,'all');
+ const conversions=calls.length;
+ await panel.locator('#reverse').check();await panel.getByText('Remember reviewed correction',{exact:true}).click();
+ await panel.getByText(/Correction saved locally/).waitFor();
+ await record.locator('#name').fill('Aḥmad ʿAlī');await panel.getByText('Capture current field',{exact:true}).click();
+ await panel.getByLabel('Language',{exact:true}).selectOption('arabic');await panel.getByText('Convert',{exact:true}).click();
+ await panel.waitForFunction(()=>document.getElementById('output').value==='أحمد علي');
+ assert.equal(calls.length,conversions);
+ await record.locator('#name').fill('أحمد علي');await record.locator('#name').evaluate(el=>el.setSelectionRange(el.value.length,el.value.length));
+ await panel.getByText('Capture current field',{exact:true}).click();
  // The offline picker writes the captured field and can undo it, without conversion.
  const before=calls.length;
  await panel.getByLabel('Name: search marks',{exact:true}).fill('ARABIC FATHA');

@@ -1,3 +1,4 @@
+import {lookupCorrection,rememberCorrection,forgetCorrection} from './corrections.mjs';
 import {EDITOR_MODE} from './mode.mjs';
 import {inspectActiveField,writeField} from './adapter.mjs';
 import {apiRequest,loadLanguages,detectDirection,suggestLanguage,transliterationRequest,normalizeRomanization,assertSupported} from './core.mjs';
@@ -5,8 +6,8 @@ import {renderDiacritics} from './picker.mjs';
 import {convertMarc,marcParts,nameTag} from './marc.mjs';
 const el=id=>document.getElementById(id);
 let source=null,tables={},busy=false;
-function invalidate(){el('output').value='';el('insert').disabled=true;}
-function setBusy(value){busy=value;for(const id of ['capture','convert','languages','enable'])el(id).disabled=value;for(const id of ['kind','language','direction'])el(id).disabled=value;el('insert').disabled=value || !el('output').value;}
+function invalidate(){el('output').value='';el('insert').disabled=true;el('remember').disabled=true;}
+function setBusy(value){busy=value;for(const id of ['capture','convert','languages','enable','forget'])el(id).disabled=value;for(const id of ['kind','language','direction'])el(id).disabled=value;el('insert').disabled=value || !el('output').value;el('remember').disabled=value || !el('output').value;el('output').readOnly=value;}
 async function currentTab(){
  const [tab]=await chrome.tabs.query({active:true,currentWindow:true});
  if(!tab?.id || !tab.url?.startsWith('https://'))throw new Error('Open your Alma site in an HTTPS tab.');
@@ -72,6 +73,9 @@ el('convert').addEventListener('click',async()=>{
  if(!source)return;setBusy(true);invalidate();el('status').textContent='Waiting for ScriptShifter…';
  try{
   const lang=el('language').value,direction=el('direction').value,kind=el('kind').value;
+  if(!tables[lang])throw new Error('Select a language first.');
+  const saved=await lookupCorrection(lang,direction,source.text);
+  if(saved!==null){el('output').value=saved;el('status').textContent='Loaded your saved correction. Review it before insertion.';return;}
   assertSupported(tables,lang,direction);
   const warnings=[];
   const request=async(text,cap)=>{
@@ -104,4 +108,17 @@ el('insert').addEventListener('click',async()=>{
   invalidate();
  }catch(error){el('status').textContent=error.message;}
  finally{setBusy(false);}
+});
+
+el('output').addEventListener('input',()=>{el('insert').disabled=busy || !el('output').value.trim();el('remember').disabled=busy || !el('output').value.trim();});
+el('remember').addEventListener('click',async()=>{
+ if(!source || busy)return;setBusy(true);
+ try{await rememberCorrection(el('language').value,el('direction').value,source.text,el('output').value,el('reverse').checked);el('status').textContent='Correction saved locally for this language and exact text. Reverse mapping is saved only if selected.';}
+ catch(error){el('status').textContent=error.message;}
+ finally{setBusy(false);}
+});
+el('forget').addEventListener('click',async()=>{
+ if(!source || busy)return;
+ try{await forgetCorrection(el('language').value,el('direction').value,source.text);el('status').textContent='Saved correction for this direction removed.';}
+ catch(error){el('status').textContent=error.message;}
 });

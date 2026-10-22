@@ -1,3 +1,4 @@
+import {lookupCorrection,rememberCorrection,forgetCorrection} from './corrections.mjs';
 import {activePage} from './tab.mjs';
 import {renderDiacritics} from './picker.mjs';
 import {apiRequest, detectDirection, suggestLanguage, assertSupported, loadLanguages, transliterationRequest, normalizeRomanization} from './core.mjs';
@@ -53,42 +54,63 @@ function render(entry, tables, tabId, form) {
   direction.value = detectDirection(entry.text);
   const dirLabel = element('label', 'Direction'); dirLabel.append(direction); card.append(dirLabel);
   const parallel = entry.resourceTitle || /^(contributors\[\d+\]\.name|notes\[\d+\]\.note|series\[\d+\]\.value|alternativeTitles\[\d+\]\.alternativeTitle|publication\[\d+\]\.(publisher|place)|(editions|physicalDescriptions|publicationFrequency|publicationRange)\[\d+\])$/.test(entry.name || '');
-  const preview = element('button', parallel ? 'Convert and add parallel field' : 'Preview this field');
-  const apply = element('button', 'Apply to field'); apply.disabled = true;
+  const preview = element('button', parallel ? 'Convert for review' : 'Preview this field');
+  const apply = element('button', parallel ? 'Add reviewed parallel field' : 'Apply to field'); apply.disabled = true;
   const undo = element('button', 'Undo'); undo.disabled = true;
-  const output = element('textarea'); output.readOnly = true; output.setAttribute('aria-label', `${entry.label}: preview`);
+  const output = element('textarea'); output.readOnly = false; output.setAttribute('aria-label', `${entry.label}: preview`);
   const message = element('p'); message.setAttribute('role', 'status');
-  if (parallel) {apply.hidden = true; undo.hidden = true;}
+  if (parallel) undo.hidden = true;
+  const remember=element('button','Remember reviewed correction');remember.disabled=true;
+  const forget=element('button','Forget saved correction');
+  const reverse=element('input');reverse.type='checkbox';reverse.setAttribute('aria-label',`${entry.label}: remember reverse correction`);
+  const reverseLabel=element('label','Also remember the reverse mapping');reverseLabel.prepend(reverse);
+  const updateReview=()=>{apply.disabled=!output.value.trim() || output.value===before;remember.disabled=!output.value.trim();};
+  output.addEventListener('input',updateReview);
   let before = entry.text, applied = '';
-  function invalidate() {output.value = ''; apply.disabled = true;}
+  function invalidate() {output.value = ''; apply.disabled = true;remember.disabled=true;}
   lang.addEventListener('change', invalidate);
   direction.addEventListener('change', invalidate);
   preview.addEventListener('click', async () => {
-    invalidate(); preview.disabled = true; lang.disabled = true; direction.disabled = true;
+    invalidate(); output.readOnly=true;preview.disabled = true; lang.disabled = true; direction.disabled = true;
     message.textContent = 'Waiting for ScriptShifter conversion…';
     try {
-      assertSupported(tables, lang.value, direction.value);
-      const data = await apiRequest('trans', transliterationRequest(lang.value, before, direction.value, entry.name));
-      const converted = normalizeRomanization(data.output, direction.value, entry.name, lang.value);
-      output.value = converted; apply.disabled = converted === before;
-      if (parallel && converted !== before) {
-        message.textContent = 'Adding the converted entry in FOLIO…';
-        const result = await execute(tabId, addParallelField, [entry.key, before, converted, form.url]);
-        message.textContent = [result.duplicate ? 'That parallel value is already present.' : 'Added a parallel entry. The original is unchanged.', result.needsType ? 'Choose an Alternative title type in FOLIO before saving.' : 'Review the new entry and save in FOLIO.', ...(data.warnings || [])].join('\n');
-        return;
+      if(!tables[lang.value] || !['s2r','r2s'].includes(direction.value))throw new Error('Select the language and direction first.');
+      const saved=await lookupCorrection(lang.value,direction.value,before);
+      let converted,warnings=[];
+      if(saved!==null)converted=saved;
+      else {
+        assertSupported(tables,lang.value,direction.value);
+        const data=await apiRequest('trans',transliterationRequest(lang.value,before,direction.value,entry.name));
+        converted=normalizeRomanization(data.output,direction.value,entry.name,lang.value);warnings=data.warnings || [];
       }
-      message.textContent = [converted === before ? 'Output is unchanged.' : 'Review the output, then apply.', ...(data.warnings || [])].join('\n');
+      output.value=converted;updateReview();
+      message.textContent=[saved!==null?'Loaded your saved correction.':'Machine conversion may be ambiguous, especially names.', 'Review or edit the result, then insert it.',...warnings].join('\n');
     } catch (error) {message.textContent = error.message;}
-    finally {preview.disabled = false; lang.disabled = false; direction.disabled = false;}
+    finally {output.readOnly=false;preview.disabled = false; lang.disabled = false; direction.disabled = false;}
   });
   apply.addEventListener('click', async () => {
     apply.disabled = true;
     try {
+      if(parallel){
+        const result=await execute(tabId,addParallelField,[entry.key,before,output.value,form.url]);
+        message.textContent=[result.duplicate?'That parallel value is already present.':'Added the reviewed parallel entry; the original is unchanged.',result.needsType?'Choose an Alternative title type in FOLIO before saving.':'Review and save in FOLIO.'].join('\n');
+        return;
+      }
       await execute(tabId, applyField, [entry.key, before, output.value, form.url]);
       applied = output.value; undo.disabled = false; preview.disabled = true;
       lang.disabled = true; direction.disabled = true;
       message.textContent = 'Applied to the form. Verify the value in FOLIO before saving. Undo is available while this popup stays open.';
-    } catch (error) {message.textContent = error.message;}
+    } catch (error) {message.textContent = error.message;updateReview();}
+  });
+  remember.addEventListener('click',async()=>{
+    remember.disabled=true;
+    try{await rememberCorrection(lang.value,direction.value,before,output.value,reverse.checked);message.textContent='Correction saved in this browser for this language and exact text, in any field.';}
+    catch(error){message.textContent=error.message;}
+    finally{remember.disabled=false;}
+  });
+  forget.addEventListener('click',async()=>{
+    try{await forgetCorrection(lang.value,direction.value,before);message.textContent='Saved correction for this direction removed. Reverse corrections are separate.';}
+    catch(error){message.textContent=error.message;}
   });
   undo.addEventListener('click', async () => {
     undo.disabled = true;
@@ -98,7 +120,7 @@ function render(entry, tables, tabId, form) {
       message.textContent = 'Original text restored.';
     } catch (error) {message.textContent = error.message;}
   });
-  card.append(preview, output, apply, undo, message); fields.append(card);
+  card.append(preview, output, apply, reverseLabel,remember,forget,undo, element('small','Saved corrections stay in this browser and contain the source and corrected text. They are exact matches, not authority verification.'),message); fields.append(card);
 }
 
 async function loadCurrentField() {

@@ -9,7 +9,7 @@ const server = createServer(async (req,res) => {
  try {
   if (req.url === '/record') {res.setHeader('Content-Type','text/html; charset=utf-8'); res.end('<aside><label>Search<input id="inventory-search" value="query"></label><label>Held by<input id="held-by" value="library"></label></aside><form data-test-instance-page-type="create"><div role="search"><label>Lookup<input value="lookup"></label></div><label>Title<input id="title" value="كتاب"></label><label>Language<select><option>Arabic</option></select></label><label>Notes<input id="notes" value=""></label><label>Password<input type="password" value="secret"></label></form><script>window.events=[];document.querySelector("#title").addEventListener("input",e=>window.events.push(e.target.value))</script>'); return;}
   const name = req.url.slice(1) || 'popup.html';
-  if (!['popup.html','popup.mjs','tab.mjs','core.mjs','form.mjs','picker.mjs','diacritics.mjs','marks.json'].includes(name)) {res.writeHead(404).end();return;}
+  if (!['popup.html','popup.mjs','tab.mjs','corrections.mjs','core.mjs','form.mjs','picker.mjs','diacritics.mjs','marks.json'].includes(name)) {res.writeHead(404).end();return;}
   res.setHeader('Content-Type', name.endsWith('.mjs')?'text/javascript':'text/html');
   res.end(await readFile(new URL(name,root)));
  } catch {res.writeHead(500).end();}
@@ -29,7 +29,14 @@ try {
   await route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(trans?{output:'Kitāb',warnings:[]}:{arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:false}})});
  });
  await popup.exposeFunction('executeInRecord', async (source,args) => [{result:await record.evaluate(({source,args}) => (0,eval)(`(${source})`)(...args),{source,args})}]);
- await popup.addInitScript(({url}) => {window.chrome={tabs:{query:async()=>[{id:1}]},scripting:{executeScript:({func,args=[]})=>window.executeInRecord(func.toString(),args)}};},{url:base+'/record'});
+ await popup.addInitScript(({url}) => {window.correctionStore={};window.chrome={storage:{local:{get:async key=>key.startsWith('scriptshifterCorrectionV1:')?{[key]:window.correctionStore[key]}:{},set:async entries=>{for(const [key,value] of Object.entries(entries))if(key.startsWith('scriptshifterCorrectionV1:'))window.correctionStore[key]=value;},remove:async key=>{delete window.correctionStore[key];}}},tabs:{query:async()=>[{id:1}]},scripting:{executeScript:({func,args=[]})=>window.executeInRecord(func.toString(),args)}};},{url:base+'/record'});
+ async function reviewedParallel(){
+  const before=await record.locator('#title').inputValue();
+  await popup.getByText('Convert for review',{exact:true}).click();
+  await popup.waitForFunction(()=>[...document.querySelectorAll('button')].some(button=>button.textContent==='Add reviewed parallel field'&&!button.disabled));
+  assert.equal(await record.locator('#title').inputValue(),before);
+  await popup.getByText('Add reviewed parallel field',{exact:true}).click();
+ }
  await popup.goto(base+'/popup.html');
  await popup.getByLabel('Title: diacritics draft',{exact:true}).waitFor();
  assert.equal(await popup.locator('article').count(),1);
@@ -83,22 +90,22 @@ try {
   document.querySelector('form').append(group);
  });
  await popup.getByText('Transliterate current field',{exact:true}).click();
- await popup.getByText('Convert and add parallel field',{exact:true}).click();
+ await reviewedParallel();
  await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[0].alternativeTitle"]')?.value==='Kitāb');
  assert.equal(await record.locator('#title').inputValue(),'كتاب');
  await popup.getByText(/Choose an Alternative title type in FOLIO before saving/).waitFor();
- await popup.getByText('Convert and add parallel field',{exact:true}).click();
+ await reviewedParallel();
  await popup.getByText(/That parallel value is already present/).waitFor();
  assert.equal(await record.locator('[name$=".alternativeTitle"]').count(),1);
  await record.locator('#title').fill('kitāb');
  await popup.getByText('Transliterate current field',{exact:true}).click();
  assert.equal(await popup.getByLabel('Title: romanization capitalization',{exact:true}).count(),0);
- await popup.locator('article').first().getByText('Convert and add parallel field',{exact:true}).click();
+ await reviewedParallel();
  await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[1].alternativeTitle"]')?.value==='كتاب');
  assert.equal(await record.locator('#title').inputValue(),'kitāb');
  await record.locator('#title').fill('كتاب جديد');
  await popup.getByText('Transliterate current field',{exact:true}).click();
- await popup.getByText('Convert and add parallel field',{exact:true}).click();
+ await reviewedParallel();
  await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[2].alternativeTitle"]')?.value==='Kitāb jadīd');
  assert.equal(await record.locator('#title').inputValue(),'كتاب جديد');
  console.log('PASS: first-word-only capitalization reaches API and its complete response is inserted.');
@@ -114,7 +121,7 @@ try {
  });
  await record.locator('#title').fill('الكتاب والمكتبة');
  await popup.getByText('Transliterate current field',{exact:true}).click();
- await popup.getByText('Convert and add parallel field',{exact:true}).click();
+ await reviewedParallel();
  await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[3].alternativeTitle"]')?.value==='al-Kitāb wa-al-maktabah');
  assert.equal(await popup.getByLabel('Title: preview',{exact:true}).inputValue(),'al-Kitāb wa-al-maktabah');
  console.log('PASS: interior capitals from the API are corrected in both preview and saved-form parallel title.');
@@ -136,7 +143,7 @@ try {
   await record.locator('[name="contributors[0].contributorNameTypeId"]').selectOption(type);
   await record.locator('[name="contributors[0].name"]').focus();
   await popup.getByText('Transliterate current field',{exact:true}).click();
-  await popup.getByText('Convert and add parallel field',{exact:true}).click();
+  await reviewedParallel();
   const expected=type==='person'?'Aḥmad ʿAlī':'Jāmiʿat Al-qāhirah';
   await record.waitForFunction(value=>[...document.querySelectorAll('#test-contributors textarea')].some(el=>el.value===value),expected);
  }
@@ -147,7 +154,7 @@ try {
   // Remove the last generated row between roles so each role creates a fresh parallel entry.
   await record.locator('#test-publication li').evaluateAll(rows=>rows.slice(1).forEach(row=>row.remove()));
   await popup.getByText('Transliterate current field',{exact:true}).click();
-  await popup.getByText('Convert and add parallel field',{exact:true}).click();
+  await reviewedParallel();
   await record.waitForFunction(()=>document.querySelector('[name="publication[1].publisher"]')?.value==='Dār Al-kutub');
   assert.equal(await record.locator('[name="publication[1].role"]').inputValue(),role);
  }
@@ -189,6 +196,31 @@ try {
  await popup.getByText(/Transliteration could not load/).waitFor();
  assert.equal(await popup.locator('article').count(),1);
  assert.equal(await popup.getByLabel('Notes: diacritics draft',{exact:true}).count(),1);
+ // Manual review and reusable correction of the reported Ayman error.
+ await popup.unroute('https://bibframe.org/**');
+ let badNameCalls=0;
+ await popup.route('https://bibframe.org/scriptshifter/**',async route=>{
+  if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'content-type'}});return;}
+  const trans=route.request().url().endsWith('/trans');if(trans)badNameCalls++;
+  await route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(trans?{output:'أيما',warnings:[]}:{arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:true}})});
+ });
+ await record.locator('#notes').fill('Ayman');
+ await popup.getByText('Transliterate current field',{exact:true}).click();
+ await popup.getByText('Preview this field',{exact:true}).click();
+ await popup.waitForFunction(()=>document.querySelector('article textarea').value==='أيما');
+ await popup.getByLabel('Notes: preview',{exact:true}).fill('أيمن');
+ await popup.getByLabel('Notes: remember reverse correction',{exact:true}).check();
+ await popup.getByText('Remember reviewed correction',{exact:true}).click();
+ await popup.getByText(/Correction saved in this browser/).waitFor();
+ assert.equal(await record.locator('#notes').inputValue(),'Ayman');
+ await popup.getByText('Apply to field',{exact:true}).click();
+ await record.waitForFunction(()=>document.querySelector('#notes').value==='أيمن');
+ await popup.getByText('Transliterate current field',{exact:true}).click();
+ await popup.getByText('Preview this field',{exact:true}).click();
+ await popup.getByText(/Loaded your saved correction/).waitFor();
+ assert.equal(await popup.getByLabel('Notes: preview',{exact:true}).inputValue(),'Ayman');
+ assert.equal(badNameCalls,1);
+ console.log('PASS: incorrect machine spelling is editable before insertion; a verified correction is saved and reused in reverse without another API call.');
  assert.equal(await record.locator('#inventory-search').inputValue(),'query');
  assert.equal(await record.locator('#held-by').inputValue(),'library');
  await record.locator('#inventory-search').focus();
