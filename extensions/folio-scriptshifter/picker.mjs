@@ -17,52 +17,56 @@ export function renderDiacritics(entry, marks, applyToField) {
     count.textContent = `${matches.length} matching marks${matches.length>100 ? '; showing the first 100. Search to narrow the list.' : '.'}`;
   }
   search.addEventListener('input', filter); filter();
-  const insert = element('button', 'Insert selected mark');
+  const insert = element('button', 'Insert selected mark into FOLIO field');
   const code = element('input'); code.type = 'text'; code.placeholder = 'U+0301';
   code.setAttribute('aria-label', `${entry.label}: Unicode code point`);
-  const insertCode = element('button', 'Insert code point');
-  const apply = element('button', 'Apply diacritics to field'); apply.disabled = true;
+  const insertCode = element('button', 'Insert code point into FOLIO field');
+  const apply = element('button', 'Apply edited draft to field'); apply.disabled = true;
   const undo = element('button', 'Undo diacritics'); undo.disabled = true;
   const message = element('p'); message.setAttribute('role','status');
-  let start = draft.value.length, end = start, applied = null;
-  let pending = false;
+  let start = draft.value.length, end = start, fieldValue = entry.text, pending = false;
   const remember = () => {start = draft.selectionStart; end = draft.selectionEnd;};
   for (const event of ['select','keyup','click','input','blur']) draft.addEventListener(event, remember);
-  function dirty() {apply.disabled = pending || draft.value === entry.text || applied !== null;}
-  draft.addEventListener('input', dirty);
-  function add(character) {
+  function update() {
+    apply.disabled = pending || draft.value === fieldValue;
+    undo.disabled = pending || fieldValue === entry.text;
+    insert.disabled = insertCode.disabled = pending;
+    draft.readOnly = pending;
+  }
+  draft.addEventListener('input', update);
+  async function write(next) {
+    pending = true; update();
+    try {
+      await applyToField(fieldValue, next); fieldValue = next;
+      message.textContent = 'Inserted into the FOLIO field. Verify the value before saving. Undo is available while this popup stays open.';
+      return true;
+    } catch (error) {message.textContent = error.message; return false;}
+    finally {pending = false; update();}
+  }
+  async function add(character) {
+    if (pending) return;
     try {
       const result = insertCharacter(draft.value, start, end, character);
       draft.value = result.text; start = end = result.cursor;
-      draft.focus(); draft.setSelectionRange(start,end); dirty();
-      message.textContent = 'Review your draft, then apply it to the field.';
+      await write(result.text);
+      draft.focus(); draft.setSelectionRange(start,end);
     } catch (error) {message.textContent = error.message;}
   }
   insert.addEventListener('click', () => add(choices.value));
   insertCode.addEventListener('click', () => {
     try {add(parseCodePoint(code.value));} catch (error) {message.textContent = error.message;}
   });
-  apply.addEventListener('click', async () => {
-    pending = true; dirty(); draft.readOnly = true; insert.disabled = insertCode.disabled = true;
-    const next = draft.value;
-    try {
-      await applyToField(entry.text, next); applied = next; undo.disabled = false;
-      insert.disabled = insertCode.disabled = true;
-      message.textContent = 'Applied to the form. Verify the result in FOLIO before saving. Undo is available while this popup stays open.';
-    } catch (error) {draft.readOnly = false; insert.disabled = insertCode.disabled = false; message.textContent = error.message;}
-    finally {pending = false; dirty();}
-  });
+  apply.addEventListener('click', () => write(draft.value));
   undo.addEventListener('click', async () => {
-    undo.disabled = true;
-    try {
-      await applyToField(applied, entry.text); applied = null; draft.value = entry.text;
-      start = end = draft.value.length; draft.readOnly = false;
-      insert.disabled = insertCode.disabled = false; dirty(); message.textContent = 'Original text restored.';
-    } catch (error) {undo.disabled = false; message.textContent = error.message;}
+    if (await write(entry.text)) {
+      draft.value = entry.text; start = end = draft.value.length;
+      update(); message.textContent = 'Original text restored.';
+    }
   });
   card.append(label('Search Unicode marks',search), choices, count, insert,
     label('Or enter any assigned character or mark by its Unicode code point',code), insertCode,
-    element('small','Combining marks attach to the preceding letter (or the end of your selection). Precomposed letters replace selected text. Text is normalized to Unicode NFC. Automatic restoration requires a language-specific service and is not connected yet.'),
+    element('small','Insert buttons immediately update the FOLIO field. Combining marks attach to the preceding letter (or the end of your selection). Precomposed letters replace selected text. Text is normalized to Unicode NFC.'),
+    element('small','Automatic restoration of missing diacritics is not available. This picker inserts marks you choose; it does not infer correct spelling.'),
     apply, undo, message);
   return card;
 }

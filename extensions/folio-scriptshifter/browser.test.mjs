@@ -7,7 +7,7 @@ const {chromium} = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = new URL('./', import.meta.url);
 const server = createServer(async (req,res) => {
  try {
-  if (req.url === '/record') {res.setHeader('Content-Type','text/html; charset=utf-8'); res.end('<label>Title<input id="title" value="كتاب"></label><label>Language<select><option>Arabic</option></select></label><label>Notes<input id="notes" value=""></label><label>Password<input type="password" value="secret"></label><script>window.events=[];document.querySelector("#title").addEventListener("input",e=>window.events.push(e.target.value))</script>'); return;}
+  if (req.url === '/record') {res.setHeader('Content-Type','text/html; charset=utf-8'); res.end('<aside><label>Search<input id="inventory-search" value="query"></label><label>Held by<input id="held-by" value="library"></label></aside><form data-test-instance-page-type="create"><div role="search"><label>Lookup<input value="lookup"></label></div><label>Title<input id="title" value="كتاب"></label><label>Language<select><option>Arabic</option></select></label><label>Notes<input id="notes" value=""></label><label>Password<input type="password" value="secret"></label></form><script>window.events=[];document.querySelector("#title").addEventListener("input",e=>window.events.push(e.target.value))</script>'); return;}
   const name = req.url.slice(1) || 'popup.html';
   if (!['popup.html','popup.mjs','core.mjs','form.mjs','picker.mjs','diacritics.mjs','marks.json'].includes(name)) {res.writeHead(404).end();return;}
   res.setHeader('Content-Type', name.endsWith('.mjs')?'text/javascript':'text/html');
@@ -59,18 +59,24 @@ try {
  await draft.focus(); await draft.evaluate(el=>el.setSelectionRange(1,1));
  await popup.getByLabel('Title: search marks',{exact:true}).fill('ARABIC FATHA');
  await popup.getByLabel('Title: Unicode mark',{exact:true}).selectOption('َ');
- await popup.locator('article').first().getByText('Insert selected mark',{exact:true}).click();
+ await popup.locator('article').first().getByText('Insert selected mark into FOLIO field',{exact:true}).click();
  assert.equal(await draft.inputValue(),'كَتاب');
- await popup.locator('article').first().getByText('Apply diacritics to field',{exact:true}).click();
  await record.waitForFunction(()=>document.querySelector('#title').value==='كَتاب');
  await popup.locator('article').first().getByText('Undo diacritics',{exact:true}).click();
  await record.waitForFunction(()=>document.querySelector('#title').value==='كتاب');
  await popup.getByLabel('Notes: Unicode code point',{exact:true}).fill('U+00E9');
- await popup.locator('article').nth(1).getByText('Insert code point',{exact:true}).click();
+ await popup.locator('article').nth(1).getByText('Insert code point into FOLIO field',{exact:true}).click();
  assert.equal(await popup.getByLabel('Notes: diacritics draft',{exact:true}).inputValue(),'é');
- await popup.locator('article').nth(1).getByText('Apply diacritics to field',{exact:true}).click();
  await record.waitForFunction(()=>document.querySelector('#notes').value==='é');
  assert.equal(offlineRequests,0);
+ assert.equal(await record.locator('#inventory-search').inputValue(),'query');
+ assert.equal(await record.locator('#held-by').inputValue(),'library');
+ // With no open record editor, never fall back to sidebar filters.
+ await record.locator('form').evaluate(el=>el.remove());
+ await popup.getByText('Add diacritics (offline)',{exact:true}).click();
+ await popup.getByText(/Open one FOLIO New instance or Edit instance form/).waitFor();
+ assert.equal(await popup.locator('article').count(),0);
+ console.log('PASS: Search, Held by, nested lookup controls excluded; missing record form rejected.');
  console.log('PASS: offline Arabic mark insertion at caret, apply/undo, empty field character insertion, and no API requests.');
  console.log('PASS: browser field discovery, metadata detection, preview, input events, apply, undo, stale-field protection, password exclusion (mock API and extension bridge).');
 } finally {await browser?.close();await new Promise(resolve=>server.close(resolve));}

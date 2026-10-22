@@ -9,8 +9,21 @@ export function inspectForm(includeEmpty = false) {
   };
   const label = el => [...(el.labels || [])].map(labelText).join(' ') ||
     el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.name || el.id || 'Unlabelled field';
-  const inputs = [...document.querySelectorAll('input, textarea')].filter(el =>
-    (el.tagName === 'TEXTAREA' || ['text', ''].includes(el.type)) && visible(el) && (includeEmpty || el.value.trim()));
+  // Inventory renders the creation/editing layer beside the search/filter panes.
+  // Use its actual form marker, never all document inputs.
+  const candidates = [...document.querySelectorAll('form[data-test-instance-page-type]')].filter(visible);
+  if (!candidates.length) {
+    for (const title of document.querySelectorAll('#input_instance_title, form input[name="title"]')) {
+      const form = title.closest('form');
+      if (form && visible(form) && !candidates.includes(form)) candidates.push(form);
+    }
+  }
+  if (candidates.length !== 1) throw new Error('Open one FOLIO New instance or Edit instance form, then load fields again. Search and filter controls are excluded.');
+  const scope = candidates[0];
+  const recordText = el => !el.closest('[role="search"], [role="searchbox"]') &&
+    !['combobox','searchbox'].includes(el.getAttribute('role')) && !el.hasAttribute('aria-autocomplete');
+  const inputs = [...scope.querySelectorAll('input, textarea')].filter(el =>
+    (el.tagName === 'TEXTAREA' || ['text', ''].includes(el.type)) && visible(el) && recordText(el) && (includeEmpty || el.value.trim()));
   const token = crypto.randomUUID();
   const entries = inputs.map((el, index) => {
     const key = `${token}-${index}`;
@@ -18,7 +31,7 @@ export function inspectForm(includeEmpty = false) {
     return {key, label: label(el), text: el.value};
   });
   // Use a single unambiguous record-language control; do not infer from UI locale.
-  const langs = [...document.querySelectorAll('input, select')].filter(el => visible(el) &&
+  const langs = [...scope.querySelectorAll('input, select')].filter(el => visible(el) &&
     /^(record )?language(s)?\s*:?$/i.test(label(el))).map(el =>
       el.tagName === 'SELECT' ? el.selectedOptions[0]?.textContent.trim() : el.value).filter(Boolean);
   return {entries, language: langs.length === 1 ? langs[0] : '', url: location.href};
