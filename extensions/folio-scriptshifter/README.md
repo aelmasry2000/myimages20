@@ -19,8 +19,7 @@ Choose **Add diacritics (offline)** instead of loading ScriptShifter languages. 
 1. Edit the field's draft in the popup and place the cursor immediately after the letter you want to mark, or select a base letter.
 2. Search by a Unicode mark name or code, such as `acute`, `ARABIC FATHA`, `HEBREW POINT SHEVA`, or `U+0301`. The bundled Unicode 15.0 catalog contains 2,450 named marks. The list shows the first 100 search matches; refine your search for the rest.
 3. Choose a mark and click **Insert selected mark into FOLIO field**. It immediately updates the FOLIO field using the current draft. Combining marks are added after the cursor/selection. You can insert multiple marks.
-4. For a precomposed letter or a character outside the catalog, enter a code point such as `U+00E9` and click **Insert code point into FOLIO field** to update the field immediately. Such letters replace selected text.
-5. Verify the result in FOLIO before saving. If you type directly in the draft instead of using an Insert button, click **Apply edited draft to field** to copy those edits. **Undo diacritics** restores the original field text while the popup stays open, including after multiple insertions. FOLIO's Save action is still required to save the record.
+4. Verify the result in FOLIO before saving. If you type directly in the draft instead of using an Insert button, click **Apply edited draft to field** to copy those edits. **Undo diacritics** restores the original field text while the popup stays open, including after multiple insertions. FOLIO's Save action is still required to save the record.
 
 Drafts use Unicode NFC normalization. Rendering and valid mark combinations depend on the language, font and browser. Some Unicode marks are vowel signs or other script marks rather than accents. The picker does not judge spelling or choose correct marks for you. No text is sent to an external service by this mode.
 

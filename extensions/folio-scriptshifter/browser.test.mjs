@@ -64,8 +64,9 @@ try {
  await record.waitForFunction(()=>document.querySelector('#title').value==='كَتاب');
  await popup.locator('article').first().getByText('Undo diacritics',{exact:true}).click();
  await record.waitForFunction(()=>document.querySelector('#title').value==='كتاب');
- await popup.getByLabel('Notes: Unicode code point',{exact:true}).fill('U+00E9');
- await popup.locator('article').nth(1).getByText('Insert code point into FOLIO field',{exact:true}).click();
+ assert.equal(await popup.getByRole('button', {name:'Insert code point into FOLIO field',exact:true}).count(),0);
+ await popup.getByLabel('Notes: diacritics draft',{exact:true}).fill('é');
+ await popup.locator('article').nth(1).getByText('Apply edited draft to field',{exact:true}).click();
  assert.equal(await popup.getByLabel('Notes: diacritics draft',{exact:true}).inputValue(),'é');
  await record.waitForFunction(()=>document.querySelector('#notes').value==='é');
  assert.equal(offlineRequests,0);
@@ -77,6 +78,6 @@ try {
  await popup.getByText(/Open one FOLIO New instance or Edit instance form/).waitFor();
  assert.equal(await popup.locator('article').count(),0);
  console.log('PASS: Search, Held by, nested lookup controls excluded; missing record form rejected.');
- console.log('PASS: offline Arabic mark insertion at caret, apply/undo, empty field character insertion, and no API requests.');
+ console.log('PASS: offline Arabic mark insertion at caret, apply/undo, empty field draft editing, and no API requests.');
  console.log('PASS: browser field discovery, metadata detection, preview, input events, apply, undo, stale-field protection, password exclusion (mock API and extension bridge).');
 } finally {await browser?.close();await new Promise(resolve=>server.close(resolve));}
