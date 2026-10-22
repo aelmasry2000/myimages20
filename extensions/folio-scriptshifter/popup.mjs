@@ -1,3 +1,4 @@
+import {activePage} from './tab.mjs';
 import {renderDiacritics} from './picker.mjs';
 import {apiRequest, detectDirection, suggestLanguage, assertSupported, loadLanguages, transliterationRequest, normalizeRomanization} from './core.mjs';
 import {inspectForm, applyField, addParallelField} from './form.mjs';
@@ -9,7 +10,12 @@ let languageLoad = null;
 let fieldView = 0;
 function element(tag, text) {const el = document.createElement(tag); if (text) el.textContent = text; return el;}
 async function execute(tabId, func, args = []) {
-  const result = await chrome.scripting.executeScript({target: {tabId}, func, args});
+  let result;
+  try {result = await chrome.scripting.executeScript({target:{tabId},func,args});}
+  catch(error) {
+    if(/cannot access|host permission|not allowed to access/i.test(error.message))throw new Error('Click the ScriptShifter toolbar icon while the FOLIO tab is active to allow access, then try again.');
+    throw error;
+  }
   if (!result[0] || result[0].error || result[0].result === undefined) throw new Error(result[0]?.error?.message || 'FOLIO could not read this field. Refresh the FOLIO page, click an editable field, and try again.');
   return result[0].result;
 }
@@ -19,8 +25,7 @@ load.addEventListener('click', async () => {
   load.disabled=true; status.textContent='Loading ScriptShifter languages… You can continue using diacritics.';
   // Capture the field first, while it is still the user's chosen source.
   try {
-    const [tab]=await chrome.tabs.query({active:true,currentWindow:true});
-    if(!tab?.id || !/^https?:/.test(tab.url || ''))throw new Error('Open the FOLIO form in a normal browser tab.');
+    const tab=await activePage();
     const form=await execute(tab.id,inspectForm,[false,true]);
     const pending=loadLanguages();languageLoad=pending;
     const tables=await pending;
@@ -100,8 +105,7 @@ async function loadCurrentField() {
   ++fieldView;
   load.disabled = true; diacritics.disabled = true; fields.replaceChildren(); status.textContent = 'Loading diacritics…';
   try {
-    const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
-    if (!tab?.id || !/^https?:/.test(tab.url || '')) throw new Error('Open the FOLIO form in a normal browser tab.');
+    const tab=await activePage();
     const [catalog, form] = await Promise.all([
       fetch(new URL('./marks.json', import.meta.url)).then(response => {
         if (!response.ok) throw new Error('Cannot load the bundled Unicode catalog.');

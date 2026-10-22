@@ -9,7 +9,7 @@ const server = createServer(async (req,res) => {
  try {
   if (req.url === '/record') {res.setHeader('Content-Type','text/html; charset=utf-8'); res.end('<aside><label>Search<input id="inventory-search" value="query"></label><label>Held by<input id="held-by" value="library"></label></aside><form data-test-instance-page-type="create"><div role="search"><label>Lookup<input value="lookup"></label></div><label>Title<input id="title" value="كتاب"></label><label>Language<select><option>Arabic</option></select></label><label>Notes<input id="notes" value=""></label><label>Password<input type="password" value="secret"></label></form><script>window.events=[];document.querySelector("#title").addEventListener("input",e=>window.events.push(e.target.value))</script>'); return;}
   const name = req.url.slice(1) || 'popup.html';
-  if (!['popup.html','popup.mjs','core.mjs','form.mjs','picker.mjs','diacritics.mjs','marks.json'].includes(name)) {res.writeHead(404).end();return;}
+  if (!['popup.html','popup.mjs','tab.mjs','core.mjs','form.mjs','picker.mjs','diacritics.mjs','marks.json'].includes(name)) {res.writeHead(404).end();return;}
   res.setHeader('Content-Type', name.endsWith('.mjs')?'text/javascript':'text/html');
   res.end(await readFile(new URL(name,root)));
  } catch {res.writeHead(500).end();}
@@ -29,7 +29,7 @@ try {
   await route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(trans?{output:'Kitāb',warnings:[]}:{arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:false}})});
  });
  await popup.exposeFunction('executeInRecord', async (source,args) => [{result:await record.evaluate(({source,args}) => (0,eval)(`(${source})`)(...args),{source,args})}]);
- await popup.addInitScript(({url}) => {window.chrome={tabs:{query:async()=>[{id:1,url}]},scripting:{executeScript:({func,args=[]})=>window.executeInRecord(func.toString(),args)}};},{url:base+'/record'});
+ await popup.addInitScript(({url}) => {window.chrome={tabs:{query:async()=>[{id:1}]},scripting:{executeScript:({func,args=[]})=>window.executeInRecord(func.toString(),args)}};},{url:base+'/record'});
  await popup.goto(base+'/popup.html');
  await popup.getByLabel('Title: diacritics draft',{exact:true}).waitFor();
  assert.equal(await popup.locator('article').count(),1);

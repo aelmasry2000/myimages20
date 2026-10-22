@@ -85,3 +85,9 @@ The extension now uses a side panel so it stays open while you interact with FOL
 Remove the older FOLIO extension, extract the latest dedicated FOLIO ZIP into a fresh folder, and Load unpacked again. Refresh FOLIO, open New/Edit instance, click in the desired field, then open the toolbar side panel. Use **Use current field** after selecting a different field.
 
 Fixture browser tests cover field blur, direct marks, failed language fetches and preservation of the offline controls. This development environment blocks installation of unpacked extensions by browser administrator policy, so a real installed-extension/toolbar test could not be completed here. Live FOLIO behavior still needs verification in the user's browser.
+
+## Tab-access fix (0.8.1)
+
+Chrome may omit a tab's URL from `tabs.query`. The extension now accepts a valid tab ID without requiring that optional metadata and checks access by running its field inspector. The toolbar action explicitly opens the side panel inside the user gesture that grants `activeTab`. No broad site or tabs permission was added.
+
+After updating, reload the extension, refresh the FOLIO page, select its browser tab and click the ScriptShifter toolbar icon. Opening the panel from Chrome's generic side-panel selector alone does not necessarily grant access. If access is missing, the tool now gives that specific instruction rather than claiming FOLIO is not in a normal browser tab.
