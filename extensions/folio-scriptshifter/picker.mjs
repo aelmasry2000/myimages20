@@ -21,7 +21,8 @@ export function renderDiacritics(entry, marks, applyToField) {
   const apply = element('button', 'Apply edited draft to field'); apply.disabled = true;
   const undo = element('button', 'Undo diacritics'); undo.disabled = true;
   const message = element('p'); message.setAttribute('role','status');
-  let start = draft.value.length, end = start, fieldValue = entry.text, pending = false;
+  let start = entry.selectionStart ?? draft.value.length, end = entry.selectionEnd ?? start, fieldValue = entry.text, pending = false;
+  draft.setSelectionRange(start, end);
   const remember = () => {start = draft.selectionStart; end = draft.selectionEnd;};
   for (const event of ['select','keyup','click','input','blur']) draft.addEventListener(event, remember);
   function update() {

@@ -1,5 +1,5 @@
 // Executed in the active tab only after the extension button is clicked.
-export function inspectForm(includeEmpty = false) {
+export function inspectForm(includeEmpty = false, focusedOnly = false) {
   const visible = el => !!el.getClientRects().length && !el.disabled && !el.readOnly &&
     !el.closest('[hidden], [aria-hidden="true"]');
   const labelText = node => {
@@ -22,13 +22,18 @@ export function inspectForm(includeEmpty = false) {
   const scope = candidates[0];
   const recordText = el => !el.closest('[role="search"], [role="searchbox"]') &&
     !['combobox','searchbox'].includes(el.getAttribute('role')) && !el.hasAttribute('aria-autocomplete');
-  const inputs = [...scope.querySelectorAll('input, textarea')].filter(el =>
+  let inputs = [...scope.querySelectorAll('input, textarea')].filter(el =>
     (el.tagName === 'TEXTAREA' || ['text', ''].includes(el.type)) && visible(el) && recordText(el) && (includeEmpty || el.value.trim()));
+  if (focusedOnly) {
+    const active = document.activeElement;
+    if (!inputs.includes(active)) throw new Error('Click inside the FOLIO text field you want to edit, then open this extension.');
+    inputs = [active];
+  }
   const token = crypto.randomUUID();
   const entries = inputs.map((el, index) => {
     const key = `${token}-${index}`;
     el.setAttribute('data-folio-scriptshifter', key);
-    return {key, label: label(el), text: el.value};
+    return {key, label: label(el), text: el.value, selectionStart: el.selectionStart, selectionEnd: el.selectionEnd};
   });
   // Use a single unambiguous record-language control; do not infer from UI locale.
   const langs = [...scope.querySelectorAll('input, select')].filter(el => visible(el) &&

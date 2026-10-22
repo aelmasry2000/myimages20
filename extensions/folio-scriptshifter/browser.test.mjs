@@ -20,7 +20,7 @@ let browser;
 try {
  browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium',headless:true,args:['--no-sandbox']});
  const context = await browser.newContext();
- const record = await context.newPage(); await record.goto(base+'/record');
+ const record = await context.newPage(); await record.goto(base+'/record'); await record.locator('#title').focus();
  const popup = await context.newPage(); popup.setDefaultTimeout(5000); popup.setDefaultNavigationTimeout(5000); let requests=0;
  await popup.route('https://bibframe.org/scriptshifter/**', async route => {
   if (route.request().method() === 'OPTIONS') {await route.fulfill({status:204,headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'content-type'}});return;}
@@ -30,7 +30,10 @@ try {
  });
  await popup.exposeFunction('executeInRecord', async (source,args) => [{result:await record.evaluate(({source,args}) => (0,eval)(`(${source})`)(...args),{source,args})}]);
  await popup.addInitScript(({url}) => {window.chrome={tabs:{query:async()=>[{id:1,url}]},scripting:{executeScript:({func,args=[]})=>window.executeInRecord(func.toString(),args)}};},{url:base+'/record'});
- await popup.goto(base+'/popup.html'); await popup.getByText('Load fields and languages',{exact:true}).click();
+ await popup.goto(base+'/popup.html');
+ await popup.getByLabel('Title: diacritics draft',{exact:true}).waitFor();
+ assert.equal(await popup.locator('article').count(),1);
+ await popup.getByText('Load fields and languages',{exact:true}).click();
  await popup.waitForFunction(()=>document.querySelectorAll('article').length===1);
  assert.equal(await popup.getByLabel('Title: language',{exact:true}).inputValue(),'arabic');
  assert.equal(await popup.getByLabel('Title: direction',{exact:true}).inputValue(),'s2r');
@@ -53,10 +56,10 @@ try {
  let offlineRequests = 0;
  await popup.route('https://bibframe.org/**', route => {offlineRequests++; return route.abort();});
  await record.locator('#title').fill('كتاب');
- await popup.getByText('Add diacritics (offline)',{exact:true}).click();
- await popup.waitForFunction(()=>document.querySelectorAll('article').length===2);
+ await record.locator('#title').evaluate(el=>el.setSelectionRange(1,1));
+ await popup.getByText('Use current field',{exact:true}).click();
+ await popup.waitForFunction(()=>document.querySelectorAll('article').length===1);
  const draft = popup.getByLabel('Title: diacritics draft',{exact:true});
- await draft.focus(); await draft.evaluate(el=>el.setSelectionRange(1,1));
  await popup.getByLabel('Title: search marks',{exact:true}).fill('ARABIC FATHA');
  await popup.getByLabel('Title: Unicode mark',{exact:true}).selectOption('َ');
  await popup.locator('article').first().getByText('Insert selected mark into FOLIO field',{exact:true}).click();
@@ -65,16 +68,22 @@ try {
  await popup.locator('article').first().getByText('Undo diacritics',{exact:true}).click();
  await record.waitForFunction(()=>document.querySelector('#title').value==='كتاب');
  assert.equal(await popup.getByRole('button', {name:'Insert code point into FOLIO field',exact:true}).count(),0);
+ await record.locator('#notes').focus();
+ await popup.getByText('Use current field',{exact:true}).click();
  await popup.getByLabel('Notes: diacritics draft',{exact:true}).fill('é');
- await popup.locator('article').nth(1).getByText('Apply edited draft to field',{exact:true}).click();
+ await popup.locator('article').first().getByText('Apply edited draft to field',{exact:true}).click();
  assert.equal(await popup.getByLabel('Notes: diacritics draft',{exact:true}).inputValue(),'é');
  await record.waitForFunction(()=>document.querySelector('#notes').value==='é');
  assert.equal(offlineRequests,0);
  assert.equal(await record.locator('#inventory-search').inputValue(),'query');
  assert.equal(await record.locator('#held-by').inputValue(),'library');
+ await record.locator('#inventory-search').focus();
+ await popup.getByText('Use current field',{exact:true}).click();
+ await popup.getByText(/Click inside the FOLIO text field you want to edit/).waitFor();
+ assert.equal(await popup.locator('article').count(),0);
  // With no open record editor, never fall back to sidebar filters.
  await record.locator('form').evaluate(el=>el.remove());
- await popup.getByText('Add diacritics (offline)',{exact:true}).click();
+ await popup.getByText('Use current field',{exact:true}).click();
  await popup.getByText(/Open one FOLIO New instance or Edit instance form/).waitFor();
  assert.equal(await popup.locator('article').count(),0);
  console.log('PASS: Search, Held by, nested lookup controls excluded; missing record form rejected.');

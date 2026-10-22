@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ScriptShifter for FOLIO",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Preview ScriptShifter transliterations and add Unicode diacritics offline in FOLIO form fields.",
   "permissions": [
     "activeTab",

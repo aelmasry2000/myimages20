@@ -75,7 +75,7 @@ function render(entry, tables, tabId, form) {
   card.append(preview, output, apply, undo, message); fields.append(card);
 }
 
-diacritics.addEventListener('click', async () => {
+async function loadCurrentField() {
   load.disabled = true; diacritics.disabled = true; fields.replaceChildren(); status.textContent = 'Loading diacritics…';
   try {
     const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
@@ -84,11 +84,13 @@ diacritics.addEventListener('click', async () => {
       fetch(new URL('./marks.json', import.meta.url)).then(response => {
         if (!response.ok) throw new Error('Cannot load the bundled Unicode catalog.');
         return response.json();
-      }), execute(tab.id, inspectForm, [true])
+      }), execute(tab.id, inspectForm, [true, true])
     ]);
     for (const entry of form.entries) fields.append(renderDiacritics(entry, catalog.marks,
       (before, after) => execute(tab.id, applyField, [entry.key, before, after, form.url])));
-    status.textContent = `${form.entries.length} editable text fields. ${catalog.marks.length} Unicode marks available. All diacritics editing stays in this browser.`;
+    status.textContent = `Editing: ${form.entries[0].label}`;
   } catch (error) {status.textContent = error.message;}
   finally {load.disabled = false; diacritics.disabled = false;}
-});
+}
+diacritics.addEventListener('click', loadCurrentField);
+loadCurrentField();

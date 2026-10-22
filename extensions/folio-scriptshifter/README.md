@@ -12,18 +12,16 @@ A standalone Chrome/Edge Manifest V3 extension for reviewing transliterations in
 6. Confirm each language and conversion direction. Click **Preview this field** to send its text to ScriptShifter, review the output, then click **Apply to field**. Apply replaces that field's text. **Undo** restores it while the popup remains open, provided you have not edited it since applying.
 7. Close the popup, verify the values in FOLIO, and use FOLIO's own save action. The extension never submits the record.
 
-## Add diacritics in any script
+## Add diacritics to the current field
 
-Choose **Add diacritics (offline)** instead of loading ScriptShifter languages. This works without API access, including in empty fields.
+1. In FOLIO's New/Edit instance form, click the text field you want to edit. Place the cursor after the letter you want to mark, or select that letter.
+2. Open the extension. It automatically shows only that field, preserving your cursor or selection. Empty text fields are supported.
+3. Search for a mark, such as `acute`, `ARABIC FATHA`, or `HEBREW POINT SHEVA`, select it and click **Insert selected mark into FOLIO field**. The field updates immediately. You may add more marks or use **Undo diacritics** to restore its original text.
+4. Save the record using FOLIO's Save action. If you edit the draft by typing, use **Apply edited draft to field**. Closing the popup discards undo history.
 
-1. Edit the field's draft in the popup and place the cursor immediately after the letter you want to mark, or select a base letter.
-2. Search by a Unicode mark name or code, such as `acute`, `ARABIC FATHA`, `HEBREW POINT SHEVA`, or `U+0301`. The bundled Unicode 15.0 catalog contains 2,450 named marks. The list shows the first 100 search matches; refine your search for the rest.
-3. Choose a mark and click **Insert selected mark into FOLIO field**. It immediately updates the FOLIO field using the current draft. Combining marks are added after the cursor/selection. You can insert multiple marks.
-4. Verify the result in FOLIO before saving. If you type directly in the draft instead of using an Insert button, click **Apply edited draft to field** to copy those edits. **Undo diacritics** restores the original field text while the popup stays open, including after multiple insertions. FOLIO's Save action is still required to save the record.
+To switch fields, close the popup, click another FOLIO field, then reopen the extension. **Use current field** refreshes the selected field. Search and Held by controls cannot be selected as record fields.
 
-Drafts use Unicode NFC normalization. Rendering and valid mark combinations depend on the language, font and browser. Some Unicode marks are vowel signs or other script marks rather than accents. The picker does not judge spelling or choose correct marks for you. No text is sent to an external service by this mode.
-
-**Automatic restoration is not implemented.** There is no universal restoration endpoint in the ScriptShifter API. Missing diacritics are often ambiguous and need a language-specific model/service plus human review. Supporting manual entry across Unicode scripts does not establish automatic restoration for all languages.
+The picker works offline with 2,450 Unicode marks. Combining marks attach after the cursor/selection, and text is normalized to NFC. Rendering depends on your font and browser. No text is sent to an external service by this mode. Automatic restoration is not implemented; the picker inserts marks you choose.
 
 To update an existing installation, download the latest repository ZIP, replace the extracted extension folder, and click **Reload** on its card in `chrome://extensions` or `edge://extensions`.
 
@@ -55,7 +53,7 @@ The browser smoke test needs Playwright and Chromium. Run:
 PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node browser.test.mjs
 ```
 
-Use `CHROMIUM_PATH` if Chromium is not at `/usr/bin/chromium`. This test runs the popup and form bridge against a local fixture, with a mock ScriptShifter API and Chrome scripting bridge. It checks discovery, language metadata, preview, apply, input events, undo, stale text protection, immediate offline Arabic mark insertion, precomposed characters in empty fields, exclusion of Search/Held by/lookup controls, and rejection of pages without a record form. It does not validate packaged extension permissions or a live FOLIO installation.
+Use `CHROMIUM_PATH` if Chromium is not at `/usr/bin/chromium`. This test runs the popup and form bridge against a local fixture, with a mock ScriptShifter API and Chrome scripting bridge. It checks discovery, language metadata, preview, apply, input events, undo, stale text protection, automatic current-field selection, preservation of the FOLIO cursor position, immediate offline Arabic mark insertion, precomposed characters in empty fields, exclusion of Search/Held by/lookup controls, and rejection of pages without a record form. It does not validate packaged extension permissions or a live FOLIO installation.
 
 ## Copyright
 
