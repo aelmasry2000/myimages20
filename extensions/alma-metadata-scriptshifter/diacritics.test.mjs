@@ -19,14 +19,24 @@ test('code point parser accepts marks and supplementary characters, rejects inva
  assert.equal(parseCodePoint('U+0301'),'\u0301'); assert.equal(parseCodePoint('1E944'),'\u{1E944}');
  for (const input of ['110000','D800','0000','202E','not a code']) assert.throws(()=>parseCodePoint(input));
 });
-test('Unicode catalog contains expected scripts and unique valid code points',async()=>{
- const {marks}=JSON.parse(await readFile(new URL('marks.json',import.meta.url),'utf8'));
- assert.ok(marks.length>2000); assert.equal(new Set(marks.map(m=>m.code)).size,marks.length);
- for(const m of marks) {assert.match(m.character,/^\p{Mark}$/u);assert.equal(parseCodePoint(m.code),m.character);}
- for(const name of ['COMBINING ACUTE ACCENT','ARABIC FATHA','HEBREW POINT SHEVA','DEVANAGARI VOWEL SIGN I']) assert.ok(marks.some(m=>m.name===name));
+test('catalog is traceable to ScriptShifter and Arabic contains ayn, hamza and romanization marks only',async()=>{
+ const data=JSON.parse(await readFile(new URL('marks.json',import.meta.url),'utf8'));
+ assert.match(data.source_commit,/^[0-9a-f]{40}$/);assert.equal(data.source,'https://github.com/lcnetdev/scriptshifter');
+ assert.equal(data.languages.length,165);
+ assert.equal(new Set(data.marks.map(mark=>mark.group+'|'+mark.code)).size,data.marks.length);
+ for(const mark of data.marks){
+  assert.equal(parseCodePoint(mark.code),mark.character);
+  assert.ok(mark.source_ids.length && mark.source_ids.every(id=>typeof data.source_files[id]==='string'));
+ }
+ const arabic=data.marks.filter(mark=>mark.group==='Arabic');
+ assert.ok(arabic.some(mark=>mark.character==='ʻ' && mark.name.startsWith('Ayn')));
+ assert.ok(arabic.some(mark=>mark.name.startsWith('Hamza')));
+ for(const char of ['ā','ī','ū','ḥ','ṣ','ḍ','ṭ','ẓ','̄','̣'])assert.ok(arabic.some(mark=>mark.character===char),char);
+ for(const char of ['َ','ُ','ِ','ً','ٌ','ٍ','ّ','ْ','ʉ'])assert.ok(!arabic.some(mark=>mark.character===char),char);
+ assert.equal(data.languages.find(language=>language.id==='khmer').count,0);
 });
 
-test('marks are grouped by script and sorted by name without mutating the catalog',()=>{
+test('characters are grouped by language and sorted by name without mutating the catalog',()=>{
  const input=[{name:'HEBREW POINT SHEVA',code:'U+05B0',group:'Hebrew'}, {name:'ARABIC SHADDA',code:'U+0651',group:'Arabic'}, {name:'ARABIC FATHA',code:'U+064E',group:'Arabic'}];
  const result=groupMarks(input);
  assert.deepEqual(result.map(group=>group.name),['Arabic','Hebrew']);

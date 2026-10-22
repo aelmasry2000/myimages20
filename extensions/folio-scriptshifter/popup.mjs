@@ -134,8 +134,8 @@ async function loadCurrentField() {
         return response.json();
       }), execute(tab.id, inspectForm, [true, true])
     ]);
-    for (const entry of form.entries) fields.append(renderDiacritics(entry, catalog.marks,
-      (before, after) => execute(tab.id, applyField, [entry.key, before, after, form.url])));
+    for (const entry of form.entries) fields.append(renderDiacritics({...entry,preferredLanguage:form.language}, catalog.marks,
+      (before, after) => execute(tab.id, applyField, [entry.key, before, after, form.url]),catalog.languages));
     status.textContent = `Editing: ${form.entries[0].label}`;
   } catch (error) {status.textContent = error.message;}
   finally {load.disabled = Boolean(languageLoad); diacritics.disabled = false;}

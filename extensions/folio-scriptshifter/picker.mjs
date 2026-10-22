@@ -1,25 +1,29 @@
 import {insertCharacter, groupMarks} from './diacritics.mjs';
 function element(tag, text) {const el = document.createElement(tag); if (text) el.textContent = text; return el;}
 function label(text, input) {const el = element('label', text); el.append(input); return el;}
-export function renderDiacritics(entry, marks, applyToField) {
+export function renderDiacritics(entry, marks, applyToField, languages = []) {
   const card = element('article'); card.append(element('strong', entry.label));
   const draft = element('textarea'); draft.value = entry.text; draft.dir = 'auto';
   draft.setAttribute('aria-label', `${entry.label}: diacritics draft`);
   card.append(label('Edit text; place the cursor after the letter to mark', draft));
-  const search = element('input'); search.type = 'search'; search.placeholder = 'Arabic fatha, Hebrew, acute…';
+  const search = element('input'); search.type = 'search'; search.placeholder = 'Ayn, hamza, macron, dot below…';
   search.setAttribute('aria-label', `${entry.label}: search marks`);
-  const choices = element('select'); choices.setAttribute('aria-label', `${entry.label}: Unicode mark`);
+  const choices = element('select'); choices.setAttribute('aria-label', `${entry.label}: romanization character`);
   const count = element('small');
-  const groups = groupMarks(marks).map(group => ({...group, marks:group.marks.map(mark => ({...mark,
-    searchText:`${group.name} ${mark.name} ${mark.code} ${mark.character}`.toUpperCase()
+  const indexed = groupMarks(marks);
+  for (const language of languages) if (!indexed.some(group=>group.name===language.label))indexed.push({name:language.label,marks:[]});
+  const groups = indexed.sort((a,b)=>a.name.localeCompare(b.name,'en')).map(group => ({...group, marks:group.marks.map(mark => ({...mark,
+    searchText:`${group.name} ${mark.name} ${mark.unicode_name || ''} ${mark.code} ${mark.character}`.toUpperCase()
   }))}));
-  const script = element('select'); script.setAttribute('aria-label', `${entry.label}: language or script`);
-  script.append(new Option('All languages / scripts',''), ...groups.map(group=>new Option(group.name,group.name)));
+  const script = element('select'); script.setAttribute('aria-label', `${entry.label}: character language`);
+  script.append(new Option('All ScriptShifter languages',''), ...groups.map(group=>new Option(group.name,group.name)));
   const firstLetter=[...entry.text].find(character=>/\p{Letter}/u.test(character));
-  let initial='Shared combining marks';
+  let initial='';
   if(firstLetter && !/\p{Script=Latin}/u.test(firstLetter)) {
     initial=groups.find(group=>{try{return new RegExp(`\\p{Script=${group.name.replaceAll(' ','_')}}`,'u').test(firstLetter);}catch{return false;}})?.name || initial;
   }
+  const preferred=languages.find(language=>[language.id,language.label].some(value=>value?.toLowerCase()===entry.preferredLanguage?.toLowerCase()));
+  if(preferred)initial=preferred.label;
   script.value=groups.some(group=>group.name===initial)?initial:'';
   function filter() {
     const words = search.value.trim().toUpperCase().split(/\s+/).filter(Boolean);
@@ -33,15 +37,15 @@ export function renderDiacritics(entry, marks, applyToField) {
       const visible = script.value ? matches : matches.slice(0, Math.max(0,200-shown));
       if (!visible.length) continue;
       const optgroup = element('optgroup'); optgroup.label = group.name;
-      optgroup.append(...visible.map(mark => new Option(`${mark.name} — ${'◌'+mark.character}`, mark.character)));
+      optgroup.append(...visible.map(mark => new Option(`${mark.name} — ${/^\p{Mark}+$/u.test(mark.character)?'◌':''}${mark.character}`, mark.character)));
       options.push(optgroup); shown += visible.length;
     }
     choices.replaceChildren(...options);
-    count.textContent = `${total} matching marks.${shown<total?' Showing the first 200; choose a language or refine your search.':''}`;
+    count.textContent = total ? `${total} documented romanization characters.${shown<total?' Showing the first 200; choose a language or refine your search.':''}` : 'No documented romanization characters found for this selection.';
   }
   search.addEventListener('input', () => {if(search.value.trim()) script.value=''; filter();});
   script.addEventListener('change',filter); filter();
-  const insert = element('button', 'Insert selected mark into FOLIO field');
+  const insert = element('button', 'Insert character into FOLIO field');
   const apply = element('button', 'Apply edited draft to field'); apply.disabled = true;
   const undo = element('button', 'Undo diacritics'); undo.disabled = true;
   const message = element('p'); message.setAttribute('role','status');
@@ -82,7 +86,7 @@ export function renderDiacritics(entry, marks, applyToField) {
       update(); message.textContent = 'Original text restored.';
     }
   });
-  card.append(label('Language / script',script), label('Search Unicode marks',search), choices, count, insert,
+  card.append(label('ScriptShifter language',script), label('Search romanization characters',search), choices, count, insert,
     apply, undo, message);
   return card;
 }

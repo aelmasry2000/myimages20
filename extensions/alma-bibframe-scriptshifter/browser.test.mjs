@@ -60,18 +60,18 @@ try{
  await panel.getByLabel('Language',{exact:true}).selectOption('arabic');await panel.getByText('Convert',{exact:true}).click();
  await panel.waitForFunction(()=>document.getElementById('output').value==='أحمد علي');
  assert.equal(calls.length,conversions);
- await record.locator('#name').fill('أحمد علي');await record.locator('#name').evaluate(el=>el.setSelectionRange(el.value.length,el.value.length));
+ await record.locator('#name').fill('Ali');await record.locator('#name').evaluate(el=>el.setSelectionRange(0,0));
  await panel.getByText('Capture current field',{exact:true}).click();
  // The offline picker writes the captured field and can undo it, without conversion.
  const before=calls.length;
- await panel.getByLabel('Name: search marks',{exact:true}).fill('ARABIC FATHA');
- await panel.getByLabel('Name: Unicode mark',{exact:true}).selectOption('َ');
- await panel.getByText('Insert selected mark into Alma field',{exact:true}).click();
- await record.waitForFunction(()=>document.getElementById('name').value==='أحمد عليَ');
- await panel.getByText('Undo diacritics',{exact:true}).click();await record.waitForFunction(()=>document.getElementById('name').value==='أحمد علي');assert.equal(calls.length,before);
+ await panel.getByLabel('Name: search marks',{exact:true}).fill('Arabic Ayn');
+ await panel.getByLabel('Name: romanization character',{exact:true}).selectOption('ʻ');
+ await panel.getByText('Insert character into Alma field',{exact:true}).click();
+ await record.waitForFunction(()=>document.getElementById('name').value==='ʻAli');
+ await panel.getByText('Undo diacritics',{exact:true}).click();await record.waitForFunction(()=>document.getElementById('name').value==='Ali');assert.equal(calls.length,before);
  // Stale source field protection and search exclusion.
  await record.locator('#name').fill('changed');
- await panel.getByText('Insert selected mark into Alma field',{exact:true}).click();await panel.getByText(/field changed/).waitFor();
+ await panel.getByText('Insert character into Alma field',{exact:true}).click();await panel.getByText(/field changed/).waitFor();
  await record.locator('#search').focus();await panel.getByText('Capture current field',{exact:true}).click();await panel.getByText(/Click an editable text input/).waitFor();
  console.log(`PASS: ${EDITOR_MODE} fixed editor, capitalization, source preservation, empty-target insertion, names, offline diacritics/undo, stale-field protection and search rejection (mock API and Chrome bridge).`);
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}

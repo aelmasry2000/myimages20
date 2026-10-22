@@ -1,8 +1,8 @@
-# ScriptShifter for Alma Metadata Editor — 0.3.1 prototype
+# ScriptShifter for Alma Metadata Editor — 0.4.0 prototype
 
 Copyright © 2026 Ayman El-Masry.
 
-A separate Chrome 116+/recent Edge side-panel extension reusing the FOLIO extension's ScriptShifter API, capitalization rules and offline Unicode diacritics picker. Intended for Alma’s MARC Metadata Editor. The other Alma editor has a separate extension. **Live Alma editing and saved-record behavior have not been validated. This is not feature-equivalent to the FOLIO integration yet.**
+A separate Chrome 116+/recent Edge side-panel extension reusing the FOLIO extension's ScriptShifter API, capitalization rules and ScriptShifter-sourced romanization character picker. Intended for Alma’s MARC Metadata Editor. The other Alma editor has a separate extension. **Live Alma editing and saved-record behavior have not been validated. This is not feature-equivalent to the FOLIO integration yet.**
 
 ## Install and use
 
@@ -10,7 +10,7 @@ A separate Chrome 116+/recent Edge side-panel extension reusing the FOLIO extens
 2. Open Alma and click the extension toolbar button to open its side panel. It stays open while you select fields in Alma.
 3. Click **Enable on this Alma site** and approve access to that specific HTTPS origin. A different library's site is enabled separately. The extension has no hard-coded institution URL. Merely being enableable at any site does not establish compatibility with every Alma version.
 4. This extension opens directly in **MARC Metadata Editor** mode; there is no editor selector. Click a standard text input or textarea in Alma, then **Capture current field** in the panel. If several editor frames are ambiguous, click the intended field again and capture it. The extension never scans all fields into a list.
-5. For offline diacritics, select a mark and insert it into the captured field at its captured cursor position. Undo works while the panel remains open. Searchable marks are grouped and sorted by name, with script filtering.
+5. For offline diacritics, select a mark and insert it into the captured field at its captured cursor position. Undo works while the panel remains open. Searchable marks are grouped and sorted by name, with language filtering.
 6. For conversion, load languages, confirm the language/direction and field kind, and click **Convert**. This sends text to `https://bibframe.org/scriptshifter/`, the Library of Congress service used by Princeton's OCLC macro. No Alma credentials are sent. Conversion itself leaves the source unchanged.
 7. To add a parallel value, use Alma's native controls to create the appropriate alternate field/property, click its **empty** text input, and click **Insert conversion into current field** in the panel. Existing nonempty values are never replaced by this conversion action. Check the record in Alma and save using Alma's own action.
 
@@ -41,3 +41,15 @@ PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node browser.test.mjs
 The browser fixture exercises standard text controls and the extension bridge with mocked Chrome APIs and ScriptShifter. It is not a live Alma compatibility test. No third-party extension implementation code is copied; the historical MARC textarea wrapper convention was checked against the publicly available Alma Booster project.
 
 Direction detection treats romanization modifiers such as ʿ/ʾ as punctuation, so names such as `Aḥmad ʿAlī` are recognized as romanized text. Genuine mixtures of Latin and non-Latin script still require a direction choice.
+
+## ScriptShifter-sourced character picker
+
+This release replaces the general Unicode mark list with a pinned snapshot from [lcnetdev/scriptshifter](https://github.com/lcnetdev/scriptshifter/tree/b9d333d17e18563c79283b938f4b722d9c7a5dcc). The generator reads the Roman side of S2R/R2S mappings (including inherited tables) and, only for hook-only languages without explicit mappings, the romanized column of upstream test samples. Unicode NFC/NFD supplies equivalent precomposed letters and their combining accents. It excludes native-script vowel signs and rule-only control placeholders. It does not synthesize a language alphabet from the Unicode script block.
+
+Arabic includes **Ayn (ʻ, U+02BB)**, **Hamza (ʼ, U+02BC; ʾ, U+02BE)**, documented macrons/dots below and their Latin letters. These forms are taken from the pinned Arabic rules; the picker does not substitute a visually similar character. Ayn is a spacing character, so it is inserted without a dotted-circle preview. A combining accent still uses the dotted-circle preview and attaches to the preceding letter. Character names appear first and are alphabetized within each language group.
+
+The snapshot lists all **165 indexed languages**. It is a documented-character extraction, not a claim of a complete prescribed inventory: hook-only services can have characters not enumerated in tables/tests. Cherokee, Khmer and Yiddish currently have no non-ASCII character inventory in these extracted sources; their language entries remain selectable and explain that no documented characters were found. This does not mean the transliteration service itself is unsupported. No invented characters are added to fill gaps.
+
+`marks.json` records the source commit, language counts and per-character source IDs into its `source_files` list. Display names otherwise use Unicode names; Arabic Ayn/Hamza labels clarify the letter function documented by the Arabic table. The upstream data is provided under CC0; see `SCRIPTSHIFTER-LICENSE.txt`.
+
+To reproduce the catalog from a checked-out upstream repository, install PyYAML if needed and run `python3 scripts/build-scriptshifter-characters.py /path/to/scriptshifter` from this repository. The generator records the checkout’s actual HEAD. Run `python3 scripts/package-extensions.py` to rebuild ZIPs.

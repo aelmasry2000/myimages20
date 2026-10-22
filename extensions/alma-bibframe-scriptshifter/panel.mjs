@@ -50,10 +50,10 @@ el('capture').addEventListener('click',async()=>{
   const direction=detectDirection(text);el('direction').value=direction || 's2r';
   el('kind').value=nameTag(field.tag)?'name':'text';
   if(Object.keys(tables).length)el('language').value=suggestLanguage(text,tables).id;
-  el('diacritics').replaceChildren(...(field.tag && Number(field.tag)<10 ? [] : [renderDiacritics(field,catalog.marks,async(before,after)=>{
+  el('diacritics').replaceChildren(...(field.tag && Number(field.tag)<10 ? [] : [renderDiacritics({...field,preferredLanguage:el('language').value},catalog.marks,async(before,after)=>{
     await execute(field,writeField,[field.key,before,after,field.url]);
     if(source?.key===field.key){source.text=after;el('source').value=after;invalidate();}
-  })]));
+  },catalog.languages)]));
   el('status').textContent=`Captured ${field.label}. ${direction?'Confirm the language and direction.':'Mixed or ambiguous text: select the direction.'}`;
  }catch(error){el('status').textContent=error.message;}
  finally{setBusy(false);}
