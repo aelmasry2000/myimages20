@@ -65,7 +65,9 @@ try {
   const payload=trans?route.request().postDataJSON():null;
   if(payload?.t_dir==='r2s')assert.equal(payload.capitalize,false);
   if(payload?.text==='كتاب جديد')assert.equal(payload.capitalize,'first');
-  const body=trans ? {output:payload.t_dir==='s2r'?(payload.text==='كتاب جديد'?'Kitāb jadīd':'Kitāb'):'كتاب',warnings:[]} : {arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:true}};
+  if(['أحمد علي','جامعة القاهرة','دار الكتب'].includes(payload?.text))assert.equal(payload.capitalize,'all');
+  const names={'أحمد علي':'Aḥmad ʿAlī','جامعة القاهرة':'Jāmiʿat Al-Qāhirah','دار الكتب':'Dār Al-Kutub'};
+  const body=trans ? {output:payload.t_dir==='s2r'?(names[payload.text] || (payload.text==='كتاب جديد'?'Kitāb jadīd':'Kitāb')):'كتاب',warnings:[]} : {arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:true}};
   await route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(body)});
  });
  await record.evaluate(()=>{
@@ -100,6 +102,42 @@ try {
  assert.equal(await record.locator('#title').inputValue(),'كتاب جديد');
  console.log('PASS: first-word-only capitalization reaches API and its complete response is inserted.');
  console.log('PASS: popup converts and adds native parallel title in both directions without replacing the original (mock API).');
+ // Exercise both personal/corporate name types and publication name roles.
+ await record.evaluate(()=>{
+  for(const root of ['contributors','publication']) {
+   const group=document.createElement('fieldset');group.id='test-'+root;group.setAttribute('data-test-repeatable-field','');
+   group.innerHTML='<ul></ul><button type="button" data-test-repeatable-field-add-item-button>Add</button>';
+   group.querySelector('button').onclick=()=>{
+    const n=group.querySelectorAll('li').length;const row=document.createElement('li');row.setAttribute('data-test-repeatable-field-list-item','');
+    row.innerHTML=root==='contributors'?`<textarea aria-label="Name" name="contributors[${n}].name"></textarea><select name="contributors[${n}].contributorNameTypeId"><option value="person">Personal</option><option value="corporate">Corporate</option></select>`:`<textarea aria-label="Publisher" name="publication[${n}].publisher"></textarea><input name="publication[${n}].role" value="Publication">`;
+    group.querySelector('ul').append(row);
+   };
+   document.querySelector('form').append(group);group.querySelector('button').click();
+  }
+ });
+ for(const [text,type] of [['أحمد علي','person'],['جامعة القاهرة','corporate']]) {
+  await record.locator('[name="contributors[0].name"]').fill(text);
+  await record.locator('[name="contributors[0].contributorNameTypeId"]').selectOption(type);
+  await record.locator('[name="contributors[0].name"]').focus();
+  await popup.getByText('Transliterate current field',{exact:true}).click();
+  await popup.getByText('Convert and add parallel field',{exact:true}).click();
+  const expected=type==='person'?'Aḥmad ʿAlī':'Jāmiʿat Al-Qāhirah';
+  await record.waitForFunction(value=>[...document.querySelectorAll('#test-contributors textarea')].some(el=>el.value===value),expected);
+ }
+ for(const role of ['Publication','Manufacture','Production']) {
+  await record.locator('[name="publication[0].publisher"]').fill('دار الكتب');
+  await record.locator('[name="publication[0].role"]').fill(role);
+  await record.locator('[name="publication[0].publisher"]').focus();
+  // Remove the last generated row between roles so each role creates a fresh parallel entry.
+  await record.locator('#test-publication li').evaluateAll(rows=>rows.slice(1).forEach(row=>row.remove()));
+  await popup.getByText('Transliterate current field',{exact:true}).click();
+  await popup.getByText('Convert and add parallel field',{exact:true}).click();
+  await record.waitForFunction(()=>document.querySelector('[name="publication[1].publisher"]')?.value==='Dār Al-Kutub');
+  assert.equal(await record.locator('[name="publication[1].role"]').inputValue(),role);
+ }
+ console.log('PASS: personal/corporate contributors and publisher/printer/producer name roles request every-word capitalization and retain row metadata.');
+ await record.locator('#test-contributors').evaluate(el=>el.remove());
+ await record.locator('#test-publication').evaluate(el=>el.remove());
  // Restore fixture to one title/notes form for focused-field checks below.
  await record.locator('fieldset').evaluate(el=>el.remove());
  await popup.unroute('https://bibframe.org/scriptshifter/**');

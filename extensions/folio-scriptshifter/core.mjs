@@ -70,9 +70,10 @@ export async function loadLanguages(cache = globalThis.chrome?.storage?.local, r
   return tables;
 }
 
-export function transliterationRequest(lang, text, direction) {
+export function transliterationRequest(lang, text, direction, fieldName = '') {
   if (!['s2r','r2s'].includes(direction)) throw new Error('Choose a supported conversion direction.');
+  const nameField = /^(contributors\[\d+\]\.name|publication\[\d+\]\.publisher)$/.test(fieldName);
   return {lang, text, t_dir:direction,
-    capitalize:direction==='s2r' ? 'first' : false,
+    capitalize:direction==='s2r' ? (nameField ? 'all' : 'first') : false,
     options:{}};
 }

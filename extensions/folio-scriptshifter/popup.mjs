@@ -53,7 +53,7 @@ function render(entry, tables, tabId, form) {
     message.textContent = 'Waiting for ScriptShifter conversion…';
     try {
       assertSupported(tables, lang.value, direction.value);
-      const data = await apiRequest('trans', transliterationRequest(lang.value, before, direction.value));
+      const data = await apiRequest('trans', transliterationRequest(lang.value, before, direction.value, entry.name));
       output.value = data.output; apply.disabled = data.output === before;
       if (parallel && data.output !== before) {
         message.textContent = 'Adding the converted entry in FOLIO…';

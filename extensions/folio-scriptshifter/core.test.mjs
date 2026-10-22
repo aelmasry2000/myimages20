@@ -44,3 +44,13 @@ test('only first-word capitalization is requested for the complete romanized fie
  assert.deepEqual(transliterationRequest('arabic',text,'s2r'), {lang:'arabic',text,t_dir:'s2r',capitalize:'first',options:{}});
  assert.equal(transliterationRequest('arabic','Kitāb jadīd','r2s').capitalize,false);
 });
+
+test('names use every-word capitalization while titles, places and notes use first word only',()=>{
+ for(const field of ['contributors[0].name','contributors[3].name','publication[0].publisher','publication[2].publisher']) {
+  assert.equal(transliterationRequest('arabic','أحمد علي','s2r',field).capitalize,'all');
+  assert.equal(transliterationRequest('arabic','Aḥmad ʿAlī','r2s',field).capitalize,false);
+ }
+ for(const field of ['title','indexTitle','notes[0].note','publication[0].place','publication[0].role','contributors[0].contributorTypeText']) {
+  assert.equal(transliterationRequest('arabic','كتاب جديد','s2r',field).capitalize,'first');
+ }
+});
