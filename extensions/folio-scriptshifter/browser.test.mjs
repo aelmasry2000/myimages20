@@ -95,7 +95,13 @@ try {
  await popup.waitForFunction(()=>document.querySelectorAll('article').length===1);
  const draft = popup.getByLabel('Title: diacritics draft',{exact:true});
  await popup.getByLabel('Title: search marks',{exact:true}).fill('ARABIC FATHA');
- await popup.getByLabel('Title: Unicode mark',{exact:true}).selectOption('َ');
+ const markChoices=popup.getByLabel('Title: Unicode mark',{exact:true});
+ const labels=await markChoices.locator('option').allTextContents();
+ assert.ok(labels.length>0);
+ assert.ok(labels.every(text=>/^ARABIC .*FATHA.* — ◌/u.test(text)));
+ assert.deepEqual(labels,[...labels].sort((a,b)=>a.localeCompare(b,'en')));
+ assert.equal(await markChoices.locator('optgroup').first().getAttribute('label'),'Arabic');
+ await markChoices.selectOption('َ');
  await popup.locator('article').first().getByText('Insert selected mark into FOLIO field',{exact:true}).click();
  assert.equal(await draft.inputValue(),'كَتاب');
  await record.waitForFunction(()=>document.querySelector('#title').value==='كَتاب');

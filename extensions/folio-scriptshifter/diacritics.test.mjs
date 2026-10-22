@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {insertCharacter, parseCodePoint} from './diacritics.mjs';
+import {insertCharacter, parseCodePoint, groupMarks} from './diacritics.mjs';
 test('Latin mark composes without replacing a selected base letter',()=>{
  assert.deepEqual(insertCharacter('cafe',3,4,'\u0301'),{text:'café',cursor:4});
 });
@@ -24,4 +24,12 @@ test('Unicode catalog contains expected scripts and unique valid code points',as
  assert.ok(marks.length>2000); assert.equal(new Set(marks.map(m=>m.code)).size,marks.length);
  for(const m of marks) {assert.match(m.character,/^\p{Mark}$/u);assert.equal(parseCodePoint(m.code),m.character);}
  for(const name of ['COMBINING ACUTE ACCENT','ARABIC FATHA','HEBREW POINT SHEVA','DEVANAGARI VOWEL SIGN I']) assert.ok(marks.some(m=>m.name===name));
+});
+
+test('marks are grouped by script and sorted by name without mutating the catalog',()=>{
+ const input=[{name:'HEBREW POINT SHEVA',code:'U+05B0',group:'Hebrew'}, {name:'ARABIC SHADDA',code:'U+0651',group:'Arabic'}, {name:'ARABIC FATHA',code:'U+064E',group:'Arabic'}];
+ const result=groupMarks(input);
+ assert.deepEqual(result.map(group=>group.name),['Arabic','Hebrew']);
+ assert.deepEqual(result[0].marks.map(mark=>mark.name),['ARABIC FATHA','ARABIC SHADDA']);
+ assert.equal(input[0].name,'HEBREW POINT SHEVA');
 });

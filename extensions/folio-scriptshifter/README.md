@@ -21,7 +21,7 @@ A standalone Chrome/Edge Manifest V3 extension for reviewing transliterations in
 
 To switch fields, close the popup, click another FOLIO field, then reopen the extension. **Use current field** refreshes the selected field. Search and Held by controls cannot be selected as record fields.
 
-The picker works offline with 2,450 Unicode marks. Combining marks attach after the cursor/selection, and text is normalized to NFC. Rendering depends on your font and browser. No text is sent to an external service by this mode. Automatic restoration is not implemented; the picker inserts marks you choose.
+The picker works offline with 2,450 Unicode marks. Each option starts with its Unicode name, followed by its symbol. Marks are grouped by Unicode script and sorted alphabetically by name within each group; search preserves that ordering. Shared marks appear in a separate group because scripts and languages do not have a one-to-one mapping. Group metadata uses the Unicode 15.0 Scripts.txt data from the Unicode Consortium. Combining marks attach after the cursor/selection, and text is normalized to NFC. Rendering depends on your font and browser. No text is sent to an external service by this mode. Automatic restoration is not implemented; the picker inserts marks you choose.
 
 To update an existing installation, download the latest repository ZIP, replace the extracted extension folder, and click **Reload** on its card in `chrome://extensions` or `edge://extensions`.
 

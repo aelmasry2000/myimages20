@@ -1,4 +1,4 @@
-import {insertCharacter} from './diacritics.mjs';
+import {insertCharacter, groupMarks} from './diacritics.mjs';
 function element(tag, text) {const el = document.createElement(tag); if (text) el.textContent = text; return el;}
 function label(text, input) {const el = element('label', text); el.append(input); return el;}
 export function renderDiacritics(entry, marks, applyToField) {
@@ -10,11 +10,20 @@ export function renderDiacritics(entry, marks, applyToField) {
   search.setAttribute('aria-label', `${entry.label}: search marks`);
   const choices = element('select'); choices.setAttribute('aria-label', `${entry.label}: Unicode mark`);
   const count = element('small');
+  const groups = groupMarks(marks);
   function filter() {
     const words = search.value.trim().toUpperCase().split(/\s+/).filter(Boolean);
-    const matches = marks.filter(mark => words.every(word => `${mark.name} ${mark.code} ${mark.character}`.toUpperCase().includes(word)));
-    choices.replaceChildren(...matches.slice(0,100).map(mark => new Option(`${'◌'+mark.character} — ${mark.name} (${mark.code})`, mark.character)));
-    count.textContent = `${matches.length} matching marks${matches.length>100 ? '; showing the first 100. Search to narrow the list.' : '.'}`;
+    let total = 0;
+    const options = [];
+    for (const group of groups) {
+      const matches = group.marks.filter(mark => words.every(word => `${group.name} ${mark.name} ${mark.code} ${mark.character}`.toUpperCase().includes(word)));
+      if (!matches.length) continue;
+      const optgroup = element('optgroup'); optgroup.label = group.name;
+      optgroup.append(...matches.map(mark => new Option(`${mark.name} — ${'◌'+mark.character}`, mark.character)));
+      options.push(optgroup); total += matches.length;
+    }
+    choices.replaceChildren(...options);
+    count.textContent = `${total} matching marks.`;
   }
   search.addEventListener('input', filter); filter();
   const insert = element('button', 'Insert selected mark into FOLIO field');

@@ -16,3 +16,15 @@ export function parseCodePoint(value) {
   if (/[\p{Cc}\p{Cs}\p{Cn}\p{Cf}\p{Z}]/u.test(character)) throw new Error('Choose an assigned visible character or combining mark.');
   return character;
 }
+
+export function groupMarks(marks) {
+  const groups = new Map();
+  for (const mark of marks) {
+    const name = mark.group || 'Shared combining marks';
+    if (!groups.has(name)) groups.set(name, []);
+    groups.get(name).push(mark);
+  }
+  return [...groups].sort(([a], [b]) => a.localeCompare(b, 'en')).map(([name, entries]) => ({
+    name, marks: entries.sort((a,b) => a.name.localeCompare(b.name, 'en') || a.code.localeCompare(b.code))
+  }));
+}
