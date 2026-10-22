@@ -54,7 +54,7 @@ function render(entry, tables, tabId, form) {
     try {
       assertSupported(tables, lang.value, direction.value);
       const data = await apiRequest('trans', transliterationRequest(lang.value, before, direction.value, entry.name));
-      const converted = normalizeRomanization(data.output, direction.value, entry.name);
+      const converted = normalizeRomanization(data.output, direction.value, entry.name, lang.value);
       output.value = converted; apply.disabled = converted === before;
       if (parallel && converted !== before) {
         message.textContent = 'Adding the converted entry in FOLIO…';

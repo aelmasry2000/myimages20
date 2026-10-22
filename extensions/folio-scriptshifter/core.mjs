@@ -80,10 +80,17 @@ export function transliterationRequest(lang, text, direction, fieldName = '') {
 
 // ScriptShifter tables may introduce interior capitals even with capitalize:first.
 // Enforce the library's requested display case after the complete field returns.
-export function normalizeRomanization(text, direction, fieldName = '') {
+export function normalizeRomanization(text, direction, fieldName = '', language = '') {
   if(direction !== 's2r') return text;
   const lower=text.toLowerCase();
   const capitalize=value=>value.replace(/\p{Cased_Letter}/u, letter=>letter.toUpperCase());
   const nameField=/^(contributors\[\d+\]\.name|publication\[\d+\]\.publisher)$/.test(fieldName);
-  return nameField ? lower.replace(/\S+/gu, capitalize) : capitalize(lower);
+  if(nameField) return lower.replace(/\S+/gu, capitalize);
+  const titleField=/^(title|indexTitle|alternativeTitles\[\d+\]\.alternativeTitle)$/.test(fieldName);
+  if(titleField && /^(arabic|ara)(?:[_-]|$)/i.test(language)) {
+    // Keep the Arabic definite article lowercase; capitalize the following stem.
+    const article=/^([^\p{Cased_Letter}]*al-[^\p{Cased_Letter}]*)(\p{Cased_Letter})/u;
+    if(article.test(lower))return lower.replace(article,(_,prefix,letter)=>prefix+letter.toUpperCase());
+  }
+  return capitalize(lower);
 }

@@ -114,8 +114,8 @@ try {
  await record.locator('#title').fill('الكتاب والمكتبة');
  await popup.getByText('Transliterate current field',{exact:true}).click();
  await popup.getByText('Convert and add parallel field',{exact:true}).click();
- await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[3].alternativeTitle"]')?.value==='Al-kitāb wa-al-maktabah');
- assert.equal(await popup.getByLabel('Title: preview',{exact:true}).inputValue(),'Al-kitāb wa-al-maktabah');
+ await record.waitForFunction(()=>document.querySelector('[name="alternativeTitles[3].alternativeTitle"]')?.value==='al-Kitāb wa-al-maktabah');
+ assert.equal(await popup.getByLabel('Title: preview',{exact:true}).inputValue(),'al-Kitāb wa-al-maktabah');
  console.log('PASS: interior capitals from the API are corrected in both preview and saved-form parallel title.');
  // Exercise both personal/corporate name types and publication name roles.
  await record.evaluate(()=>{

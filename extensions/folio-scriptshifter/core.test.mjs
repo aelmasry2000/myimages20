@@ -65,3 +65,11 @@ test('name fields capitalize each word and reverse conversion is unchanged',()=>
  assert.equal(normalizeRomanization('dĀR al-KUTUB','s2r','publication[0].publisher'),'Dār Al-kutub');
  assert.equal(normalizeRomanization('الكتاب المكتبة','r2s','title'),'الكتاب المكتبة');
 });
+
+test('Arabic titles keep initial al- lowercase and capitalize the following stem only',()=>{
+ assert.equal(normalizeRomanization('al-Kitāb wa-al-Maktabah','s2r','title','arabic'),'al-Kitāb wa-al-maktabah');
+ assert.equal(normalizeRomanization('“al-KITĀB” : AL-MAKTABAH','s2r','alternativeTitles[0].alternativeTitle','arabic'),'“al-Kitāb” : al-maktabah');
+ assert.equal(normalizeRomanization('al-ʿAYN wa-al-KITĀB','s2r','title','arabic'),'al-ʿAyn wa-al-kitāb');
+ assert.equal(normalizeRomanization('KITĀB wa-al-MAKTABAH','s2r','title','arabic'),'Kitāb wa-al-maktabah');
+ assert.equal(normalizeRomanization('al-KITĀB','s2r','publication[0].publisher','arabic'),'Al-kitāb');
+});
