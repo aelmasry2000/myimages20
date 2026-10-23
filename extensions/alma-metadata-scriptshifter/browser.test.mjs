@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 const {chromium}=await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root=new URL('./',import.meta.url);
-const files=new Set(['tab.mjs','panel.html','panel.mjs','mode.mjs','corrections.mjs','adapter.mjs','core.mjs','marc.mjs','picker.mjs','diacritics.mjs','marks.json']);
+const files=new Set(['paired.mjs','tab.mjs','panel.html','panel.mjs','mode.mjs','corrections.mjs','adapter.mjs','core.mjs','marc.mjs','picker.mjs','diacritics.mjs','marks.json']);
 const server=createServer(async(req,res)=>{
  try{
   const name=req.url.slice(1);
@@ -30,7 +30,7 @@ try{
   if(route.request().method()==='OPTIONS'){await route.fulfill({status:204,headers:{'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'content-type'}});return;}
   const trans=route.request().url().endsWith('/trans'),payload=trans?route.request().postDataJSON():null;
   if(trans)calls.push(payload);
-  const output=payload?.text==='الكتاب'?'al-Kitāb':payload?.text==='والمكتبة'?'wa-al-Maktabah':'aḤMAD ʿaLĪ';
+  const output=payload?.t_dir==='r2s'?(payload.text==='al-Kitāb'?'الكتاب':'والمكتبة'):payload?.text==='الكتاب'?'al-Kitāb':payload?.text==='والمكتبة'?'wa-al-Maktabah':'aḤMAD ʿaLĪ';
   await route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(trans?{output,warnings:[]}:{arabic:{label:'Arabic',marc_code:'ara',has_s2r:true,has_r2s:true}})});
  });
  await panel.goto(base+'/panel.html');
@@ -73,5 +73,29 @@ try{
  await record.locator('#name').fill('changed');
  await panel.getByText('Insert character into Alma field',{exact:true}).click();await panel.getByText(/field changed/).waitFor();
  await record.locator('#search').focus();await panel.getByText('Capture current field',{exact:true}).click();await panel.getByText(/Click an editable text input/).waitFor();
+ // Native Ctrl+L fixture: paired rows remain under one 245 field.
+ for(const direction of ['s2r','r2s']){
+  await record.goto(base+'/record');
+  const input=direction==='s2r'?'$$a الكتاب':'$$a al-Kitāb';
+  await record.locator('#marc').fill(input);
+  await record.evaluate(()=>document.addEventListener('keydown',event=>{
+   if(event.ctrlKey && event.code==='KeyL' && event.target.id==='marc'){
+    event.preventDefault();window.pairShortcutCount=(window.pairShortcutCount || 0)+1;
+    const lower=document.createElement('textarea');lower.id='paired-original';
+    event.target.parentElement.append(lower);
+   }
+  }));
+  await record.locator('#marc').focus();await panel.getByText('Capture current field',{exact:true}).click();
+  await panel.getByLabel('Language',{exact:true}).selectOption('arabic');
+  await panel.locator('#direction').selectOption(direction);
+  await panel.getByText('Convert',{exact:true}).click();
+  await panel.locator('#pair').click();
+  await panel.getByText(/Updated the paired 245 rows/).waitFor();
+  assert.equal((await record.locator('#marc').inputValue()).normalize('NFC'),'$$a al-Kitāb');
+  assert.equal(await record.locator('#paired-original').inputValue(),'$$a الكتاب');
+  assert.equal(await record.evaluate(()=>window.pairShortcutCount),1);
+  assert.equal(await panel.locator('#pair').isDisabled(),true);
+ }
+ console.log('PASS: paired 245 UI workflow in both directions uses Ctrl+L and preserves original script below romanization (mock native action).');
  console.log(`PASS: ${EDITOR_MODE} fixed editor, capitalization, source preservation, empty-target insertion, names, offline diacritics/undo, stale-field protection and search rejection (mock API and Chrome bridge).`);
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}

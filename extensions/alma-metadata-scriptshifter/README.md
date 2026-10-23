@@ -1,4 +1,4 @@
-# ScriptShifter for Alma Metadata Editor — 0.4.0 prototype
+# ScriptShifter for Alma Metadata Editor — 0.5.0 prototype
 
 Copyright © 2026 Ayman El-Masry.
 
@@ -12,14 +12,15 @@ A separate Chrome 116+/recent Edge side-panel extension reusing the FOLIO extens
 4. This extension opens directly in **MARC Metadata Editor** mode; there is no editor selector. Click a standard text input or textarea in Alma, then **Capture current field** in the panel. If several editor frames are ambiguous, click the intended field again and capture it. The extension never scans all fields into a list.
 5. For offline diacritics, select a mark and insert it into the captured field at its captured cursor position. Undo works while the panel remains open. Searchable marks are grouped and sorted by name, with language filtering.
 6. For conversion, load languages, confirm the language/direction and field kind, and click **Convert**. This sends text to `https://bibframe.org/scriptshifter/`, the Library of Congress service used by Princeton's OCLC macro. No Alma credentials are sent. Conversion itself leaves the source unchanged.
-7. To add a parallel value, use Alma's native controls to create the appropriate alternate field/property, click its **empty** text input, and click **Insert conversion into current field** in the panel. Existing nonempty values are never replaced by this conversion action. Check the record in Alma and save using Alma's own action.
+7. For a recognized **245** textarea, review the conversion and click **Update paired 245 rows (Ctrl+L)**. With original-script input, the original moves below and romanization replaces the upper text. With romanized input, the upper text stays unchanged and the generated original script goes below. The extension focuses the captured field and sends Alma's Ctrl+L shortcut; it never clones a record row. Review the direction before applying.
+8. For other fields, create the appropriate alternate row using Alma's native controls, click its **empty** text input, and click **Insert conversion into current field**. Review the record and save using Alma's own action.
 
 ## Editor behavior
 
 - MARC field tags are identified only from recognized textarea wrapper IDs (`MarcEditorPresenter.textArea.<tag>`) or an explicit `data-marc-tag` attribute. If a tag is not identified, choose the field kind yourself. The adapter supports standard text controls, not arbitrary editor internals.
 - MARC conversion preserves textual subfield delimiters (`$$`, `$`, `ǂ`, `‡`) and codes. Numeric subfields, URI values, 856 `$u` and name relationship codes are retained. Control fields are excluded. Each eligible subfield is sent separately; only the first textual segment gets sentence capitalization, while name fields use every-word capitalization. Multiple subfields may take longer because each requires a service call.
 - Personal/corporate name tags use every-word capitalization. In 260/264, publisher/printer/producer names in `$b` use every-word capitalization, while place in `$a` uses first-letter-only case. Other textual fields use first-letter-only case across the field. Arabic title tags preserve the initial lowercase `al-` and capitalize the following stem (for example `al-Kitāb wa-al-maktabah`). A final case pass corrects interior capitals returned by ScriptShifter. Reverse conversion is unchanged.
-- **Automatic MARC 880 creation/linking is not implemented.** Create and link alternate fields through Alma's native tools. This prototype does not automatically set MARC `$6` linkage, tag/indicators or script metadata. Do not paste a source field's existing linkage into an unrelated parallel field: review/remove/update linkage in Alma as appropriate.
+- **Paired 245 rows use Alma’s native Ctrl+L action.** No separate field tag or indicator is manufactured. Any native `$6` linkage on each row is retained. A single empty lower row grouped with the captured 245 can also be filled. Existing nonempty lower rows, stale source text and ambiguous new controls are rejected. If Alma ignores the synthetic shortcut, use Ctrl+L manually in Alma, capture the upper row again, and retry. Unsupported editor layouts stop with an error. A new empty native row may remain after a failed operation; review it before retrying. Live Alma shortcut handling and saved-record behavior remain unverified.
 
 ## Compatibility and privacy
 
@@ -36,6 +37,7 @@ Live API access from the development machine was blocked by its network proxy (H
 ```
 node --test marc.test.mjs diacritics.test.mjs
 PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node browser.test.mjs
+PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs node paired.test.mjs
 ```
 
 The browser fixture exercises standard text controls and the extension bridge with mocked Chrome APIs and ScriptShifter. It is not a live Alma compatibility test. No third-party extension implementation code is copied; the historical MARC textarea wrapper convention was checked against the publicly available Alma Booster project.
