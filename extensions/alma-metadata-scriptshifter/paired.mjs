@@ -18,7 +18,7 @@ export async function apply245Pair(key, before, converted, direction, url, timeo
  let created = false;
  if (!target) {
   source.focus();
-  const options = {key:'l',code:'KeyL',ctrlKey:true,keyCode:76,which:76,bubbles:true,cancelable:true};
+  const options = {key:'F8',code:'F8',ctrlKey:false,keyCode:119,which:119,bubbles:true,cancelable:true};
   source.dispatchEvent(new KeyboardEvent('keydown',options));
   source.dispatchEvent(new KeyboardEvent('keyup',options));
   const deadline = Date.now()+timeout;
@@ -38,8 +38,8 @@ export async function apply245Pair(key, before, converted, direction, url, timeo
    await new Promise(resolve=>setTimeout(resolve,50));
   } while(Date.now()<deadline);
  }
- if (!target) throw new Error('Alma did not expose a paired row after Ctrl+L. Press Ctrl+L manually in 245, then capture the upper row and try again. No text was replaced.');
- // Alma can add native linkage during Ctrl+L. Keep that linkage on each row.
+ if (!target) throw new Error('Alma did not expose a paired row after F8. Press F8 manually in 245, then capture the upper row and try again. No text was replaced.');
+ // Alma can add native linkage during F8. Keep that linkage on each row.
  const parts = value=>{
   const matches=[...value.matchAll(/(\$\$|\$|ǂ|‡)([a-z0-9])/g)];
   const links=[];let text=matches.length?value.slice(0,matches[0].index):value;

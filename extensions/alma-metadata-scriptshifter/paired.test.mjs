@@ -11,7 +11,7 @@ try{
    const source=document.querySelector('textarea');
    if(existing){const lower=document.createElement('textarea');lower.value=existing;source.parentElement.append(lower);}
    source.onkeydown=event=>{
-    if(!native || !event.ctrlKey || event.code!=='KeyL')return;
+    if(!native || event.ctrlKey || event.key!=='F8' || event.code!=='F8' || event.keyCode!==119)return;
     event.preventDefault();
     if(linked)source.value='$$6880-01 '+source.value;
     for(let i=0;i<(multiple?2:1);i++){
@@ -31,7 +31,7 @@ try{
  await fixture({copy:true,linked:true});
  assert.deepEqual((await apply()).value,{upper:'$$6880-01 '+converted,lower:'$$6245-01 '+before});
  assert.match((await apply('s2r','$$6880-01 '+converted)).error,/already has a completed pair/);
- await fixture({native:false});assert.match((await apply()).error,/Ctrl\+L manually/);
+ await fixture({native:false});assert.match((await apply()).error,/F8 manually/);
  assert.equal(await page.locator('textarea').inputValue(),before);
  await fixture({existing:'$$a existing original'});assert.match((await apply()).error,/already contains text/);
  assert.deepEqual(await page.locator('textarea').evaluateAll(nodes=>nodes.map(el=>el.value)),[before,'$$a existing original']);
@@ -41,7 +41,7 @@ try{
  assert.equal(await page.locator('textarea').first().inputValue(),before);
  await fixture({native:false});
  await page.evaluate(()=>document.querySelector('textarea').value='  $$a al-Kitāb  ');
- // An existing empty native row can be filled without dispatching Ctrl+L again.
+ // An existing empty native row can be filled without dispatching F8 again.
  await page.evaluate(()=>document.querySelector('textarea').parentElement.append(document.createElement('textarea')));
  assert.deepEqual((await apply('r2s','  $$a al-Kitāb  ','$$a الكتاب')).value,{upper:'  $$a al-Kitāb  ',lower:'$$a الكتاب'});
  console.log('PASS: native linkage preservation, duplicate protection, shortcut failure, existing-content protection, stale source, ambiguous rows and unchanged romanized input.');

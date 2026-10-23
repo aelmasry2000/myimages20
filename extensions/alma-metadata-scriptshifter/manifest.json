@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ScriptShifter for Alma Metadata Editor",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "ScriptShifter for Alma Metadata Editor: ScriptShifter conversion and offline diacritics in focused text fields.",
   "author": "Ayman El-Masry",
   "permissions": [

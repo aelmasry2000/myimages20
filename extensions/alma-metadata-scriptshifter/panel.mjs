@@ -100,7 +100,7 @@ el('convert').addEventListener('click',async()=>{
    output=await request(source.text,transliterationRequest(lang,source.text,direction,fieldName).capitalize);
   }
   el('output').value=output;
-  el('status').textContent=['Converted; review the result. For 245, choose Update paired 245 rows (Ctrl+L) to put romanization above and original script below.',...warnings].join('\n');
+  el('status').textContent=['Converted; review the result. For 245, choose Update paired 245 rows (F8) to put romanization above and original script below.',...warnings].join('\n');
  }catch(error){el('status').textContent=error.message;}
  finally{setBusy(false);}
 });
