@@ -96,6 +96,20 @@ try{
   assert.equal(await record.evaluate(()=>window.pairShortcutCount),1);
   assert.equal(await panel.locator('#pair').isDisabled(),true);
  }
+ // Existing lower row can be selected explicitly after F8 produced a blank.
+ for(const direction of ['s2r','r2s']){
+  await record.goto(base+'/record');
+  await record.locator('#marc').fill(direction==='s2r'?'$$a الكتاب':'$$a al-Kitāb');
+  await record.locator('#marc').focus();await panel.getByText('Capture current field',{exact:true}).click();
+  await panel.getByLabel('Language',{exact:true}).selectOption('arabic');await panel.locator('#direction').selectOption(direction);
+  await panel.getByText('Convert',{exact:true}).click();
+  await record.locator('#target').fill('$$a');await record.locator('#target').focus();
+  await panel.getByText('Fill selected lower row',{exact:true}).click();
+  await panel.getByText(/Filled the selected lower row/).waitFor();
+  assert.equal((await record.locator('#marc').inputValue()).normalize('NFC'),'$$a al-Kitāb');
+  assert.equal(await record.locator('#target').inputValue(),'$$a الكتاب');
+ }
+ console.log('PASS: select and fill an existing blank lower row in both directions, without creating another.');
  console.log('PASS: paired 245 UI workflow in both directions uses F8 and preserves original script below romanization (mock native action).');
  console.log(`PASS: ${EDITOR_MODE} fixed editor, capitalization, source preservation, empty-target insertion, names, offline diacritics/undo, stale-field protection and search rejection (mock API and Chrome bridge).`);
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}

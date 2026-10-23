@@ -8,8 +8,8 @@ import {renderDiacritics} from './picker.mjs';
 import {convertMarc,marcParts,nameTag} from './marc.mjs';
 const el=id=>document.getElementById(id);
 let source=null,tables={},busy=false;
-function invalidate(){el('output').value='';el('insert').disabled=true;el('remember').disabled=true;el('pair').disabled=true;}
-function setBusy(value){busy=value;for(const id of ['capture','convert','languages','enable','forget'])el(id).disabled=value;for(const id of ['kind','language','direction'])el(id).disabled=value;el('insert').disabled=value || !el('output').value;el('remember').disabled=value || !el('output').value;el('output').readOnly=value;el('pair').disabled=value || source?.tag!=='245' || !el('output').value.trim();}
+function invalidate(){el('output').value='';el('insert').disabled=true;el('remember').disabled=true;el('pair').disabled=true;el('fillPair').disabled=true;}
+function setBusy(value){busy=value;for(const id of ['capture','convert','languages','enable','forget'])el(id).disabled=value;for(const id of ['kind','language','direction'])el(id).disabled=value;el('insert').disabled=value || !el('output').value;el('remember').disabled=value || !el('output').value;el('output').readOnly=value;el('pair').disabled=value || source?.tag!=='245' || !el('output').value.trim();el('fillPair').disabled=el('pair').disabled;}
 async function execute(field,func,args){
  const results=await chrome.scripting.executeScript({target:{tabId:field.tabId,frameIds:[field.frameId]},func,args});
  if(!results[0] || results[0].error)throw new Error(results[0]?.error?.message || 'The editor frame is unavailable.');
@@ -76,6 +76,17 @@ el('pair').addEventListener('click',async()=>{
  }catch(error){el('status').textContent=error.message;}
  finally{setBusy(false);}
 });
+el('fillPair').addEventListener('click',async()=>{
+ if(busy || !source || source.tag!=='245' || !el('output').value.trim())return;setBusy(true);
+ try{
+  const target=await currentField();
+  if(target.tabId!==source.tabId || target.frameId!==source.frameId || target.url!==source.url)throw new Error('Select the lower row in the same Alma editor as the captured 245.');
+  await execute(source,apply245Pair,[source.key,source.text,el('output').value,el('direction').value,source.url,3000,target.key]);
+  invalidate();source=null;
+  el('status').textContent='Filled the selected lower row and updated 245: romanization above, original script below. Review both rows before saving.';
+ }catch(error){el('status').textContent=error.message;}
+ finally{setBusy(false);}
+});
 for(const id of ['kind','language','direction'])el(id).addEventListener('change',invalidate);
 el('convert').addEventListener('click',async()=>{
  if(!source)return;setBusy(true);invalidate();el('status').textContent='Waiting for ScriptShifter…';
@@ -118,7 +129,7 @@ el('insert').addEventListener('click',async()=>{
  finally{setBusy(false);}
 });
 
-el('output').addEventListener('input',()=>{el('insert').disabled=busy || !el('output').value.trim();el('remember').disabled=busy || !el('output').value.trim();el('pair').disabled=busy || source?.tag!=='245' || !el('output').value.trim();});
+el('output').addEventListener('input',()=>{el('insert').disabled=busy || !el('output').value.trim();el('remember').disabled=busy || !el('output').value.trim();el('pair').disabled=busy || source?.tag!=='245' || !el('output').value.trim();el('fillPair').disabled=el('pair').disabled;});
 el('remember').addEventListener('click',async()=>{
  if(!source || busy)return;setBusy(true);
  try{await rememberCorrection(el('language').value,el('direction').value,source.text,el('output').value,el('reverse').checked);el('status').textContent='Correction saved locally for this language and exact text. Reverse mapping is saved only if selected.';}

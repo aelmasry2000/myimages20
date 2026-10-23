@@ -1,5 +1,5 @@
 // Injected into Alma's editor frame. Create rows through Alma, never DOM clones.
-export async function apply245Pair(key, before, converted, direction, url, timeout = 2000) {
+export async function apply245Pair(key, before, converted, direction, url, timeout = 3000, targetKey = '') {
  if (!['s2r','r2s'].includes(direction) || !converted?.trim()) throw new Error('Convert the field and choose its direction first.');
  if (location.href !== url) throw new Error('The editor page changed. Capture the field again.');
  const source = [...document.querySelectorAll('[data-alma-scriptshifter]')].find(el=>el.getAttribute('data-alma-scriptshifter')===key);
@@ -14,7 +14,9 @@ export async function apply245Pair(key, before, converted, direction, url, timeo
  // Only reuse a row that Alma groups with this exact field, never an arbitrary empty field.
  const paired = [...(group || source).querySelectorAll('textarea')].filter(el=>el!==source && editable(el));
  if (paired.length>1 || (paired[0] && !(source.compareDocumentPosition(paired[0]) & Node.DOCUMENT_POSITION_FOLLOWING))) throw new Error('This field has multiple or ambiguous script rows. Review them in Alma.');
- let target = paired[0];
+ const selected = targetKey ? [...document.querySelectorAll('[data-alma-scriptshifter]')].find(el=>el.getAttribute('data-alma-scriptshifter')===targetKey) : null;
+ if (targetKey && (!editable(selected) || selected===source || !(source.compareDocumentPosition(selected) & Node.DOCUMENT_POSITION_FOLLOWING))) throw new Error('Select the empty lower textarea in the same Alma editor, then retry.');
+ let target = selected || paired[0];
  let created = false;
  if (!target) {
   source.focus();
@@ -31,14 +33,18 @@ export async function apply245Pair(key, before, converted, direction, url, timeo
     // or immediately follow the source's native table row.
     const sameGroup=group?.isConnected && group.contains(candidate);
     const nextRow=row?.nextElementSibling;
-    if (!candidate.closest('[role="dialog"],dialog') && (sameGroup || (nextRow?.tagName==='TR' && nextRow.contains(candidate)))) {
+    // Some Alma layouts give each textarea its own wrapper instead of a table
+    // row. F8 focuses the new editor; require that native wrapper and DOM order.
+    const nativeWrapper=candidate.closest('[id^="MarcEditorPresenter.textArea."]');
+    const focusedNative=document.activeElement===candidate && nativeWrapper && (source.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING);
+    if (!candidate.closest('[role="dialog"],dialog') && (sameGroup || focusedNative || (nextRow?.tagName==='TR' && nextRow.contains(candidate)))) {
      target=candidate;created=true;break;
     }
    }
    await new Promise(resolve=>setTimeout(resolve,50));
   } while(Date.now()<deadline);
  }
- if (!target) throw new Error('Alma did not expose a paired row after F8. Press F8 manually in 245, then capture the upper row and try again. No text was replaced.');
+ if (!target) throw new Error('Alma did not expose a paired row after F8. If a blank row appeared, click inside it and use Fill selected lower row. Do not press F8 again. No text was replaced.');
  // Alma can add native linkage during F8. Keep that linkage on each row.
  const parts = value=>{
   const matches=[...value.matchAll(/(\$\$|\$|ǂ|‡)([a-z0-9])/g)];
@@ -51,7 +57,9 @@ export async function apply245Pair(key, before, converted, direction, url, timeo
  };
  const original=parts(before).text;
  if (!editable(source) || !editable(target) || parts(source.value).text!==original || location.href!==url) throw new Error('The source changed while Alma added the row. No text was replaced; capture it again.');
- if (target.value.trim() && (!created || (parts(target.value).text && parts(target.value).text!==original))) throw new Error('The lower row already contains text. It was not overwritten.');
+ const lowerText=parts(target.value).text;
+ const blankLower=!lowerText.replace(/(\$\$|\$|ǂ|‡)[a-z0-9]/g,'').trim();
+ if (!blankLower && (!created || lowerText!==original)) throw new Error('The lower row already contains text. It was not overwritten.');
  const upperBefore=source.value,lowerBefore=target.value;
  const retainLink=(text,current)=>[...parts(current).links,parts(text).text].filter(Boolean).join(' ');
  const upper=direction==='r2s'?upperBefore:retainLink(converted,upperBefore);
