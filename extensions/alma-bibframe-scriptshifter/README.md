@@ -53,3 +53,7 @@ The snapshot lists all **165 indexed languages**. It is a documented-character e
 To reproduce the catalog from a checked-out upstream repository, install PyYAML if needed and run `python3 scripts/build-scriptshifter-characters.py /path/to/scriptshifter` from this repository. The generator records the checkout’s actual HEAD. Run `python3 scripts/package-extensions.py` to rebuild ZIPs.
 
 The picker displays combining mark names rather than complete accented letters. The union of combining marks documented in the source catalog is available under every language, alphabetically by name, so a mark can be attached to any selected base letter even without a precomposed Unicode character. Availability does not imply that every mark is appropriate for that language. Language-specific spacing signs such as ayn and hamza remain available. Searching preserves the selected language.
+
+### Version 0.4.2: Alma tab access
+
+Open the Alma HTTPS tab and click the extension toolbar icon to grant access and open the panel. This version explicitly handles that toolbar click and recovers the page URL when Chrome omits tab URL metadata. After replacing an older unpacked version, reload it in the extensions page, close the old panel, and reopen it from the toolbar.

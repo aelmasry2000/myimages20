@@ -1,3 +1,4 @@
+import {currentTab} from './tab.mjs';
 import {lookupCorrection,rememberCorrection,forgetCorrection} from './corrections.mjs';
 import {EDITOR_MODE} from './mode.mjs';
 import {inspectActiveField,writeField} from './adapter.mjs';
@@ -8,11 +9,6 @@ const el=id=>document.getElementById(id);
 let source=null,tables={},busy=false;
 function invalidate(){el('output').value='';el('insert').disabled=true;el('remember').disabled=true;}
 function setBusy(value){busy=value;for(const id of ['capture','convert','languages','enable','forget'])el(id).disabled=value;for(const id of ['kind','language','direction'])el(id).disabled=value;el('insert').disabled=value || !el('output').value;el('remember').disabled=value || !el('output').value;el('output').readOnly=value;}
-async function currentTab(){
- const [tab]=await chrome.tabs.query({active:true,currentWindow:true});
- if(!tab?.id || !tab.url?.startsWith('https://'))throw new Error('Open your Alma site in an HTTPS tab.');
- return tab;
-}
 async function execute(field,func,args){
  const results=await chrome.scripting.executeScript({target:{tabId:field.tabId,frameIds:[field.frameId]},func,args});
  if(!results[0] || results[0].error)throw new Error(results[0]?.error?.message || 'The editor frame is unavailable.');
